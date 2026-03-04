@@ -3,7 +3,14 @@
 // injection, common flags, JSON output helpers, and reporter factory.
 package clix
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+	"os"
+
+	"github.com/charmbracelet/fang"
+	"github.com/spf13/cobra"
+)
 
 // App holds build-time metadata for a CLI application.
 // Create one in main() and call Run() to execute the root command.
@@ -36,4 +43,17 @@ func (a *App) VersionString() string {
 	a.defaults()
 	return fmt.Sprintf("%s (Commit: %s) (Date: %s) (Built by: %s)",
 		a.Version, a.Commit, a.Date, a.BuiltBy)
+}
+
+// Run registers common persistent flags on cmd, then executes the command
+// via fang.Execute with the formatted version string and signal handling.
+func (a *App) Run(cmd *cobra.Command) error {
+	a.defaults()
+	registerFlags(cmd)
+	return fang.Execute(
+		context.Background(),
+		cmd,
+		fang.WithVersion(a.VersionString()),
+		fang.WithNotifySignal(os.Interrupt, os.Kill),
+	)
 }
