@@ -18,6 +18,7 @@ func TestRegisterFlags(t *testing.T) {
 		{"json", ""},
 		{"verbose", "v"},
 		{"dry-run", "n"},
+		{"silent", "s"},
 	}
 
 	for _, f := range flags {

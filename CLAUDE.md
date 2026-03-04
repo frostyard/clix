@@ -21,9 +21,9 @@ go test -v -run TestName ./...  # run a single test
 Single flat package `clix` with four source files:
 
 - **clix.go** — `App` struct with `Run()` and `VersionString()`. Wires up fang.Execute with version string and signal handling.
-- **flags.go** — Package-level flag variables (`JSONOutput`, `Verbose`, `DryRun`), registration on cobra commands, and optional `BindViper()`.
+- **flags.go** — Package-level flag variables (`JSONOutput`, `Verbose`, `DryRun`, `Silent`), registration on cobra commands, and optional `BindViper()`.
 - **output.go** — `OutputJSON()` and `OutputJSONError()` helpers for standardized JSON output to stdout.
-- **reporter.go** — `NewReporter()` factory that returns TextReporter or JSONReporter based on `--json` flag.
+- **reporter.go** — `NewReporter()` factory that returns NoopReporter (`--silent`), TextReporter, or JSONReporter (`--json`) based on flags. Silent takes priority over JSON.
 
 ## Conventions
 

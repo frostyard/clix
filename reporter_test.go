@@ -19,6 +19,27 @@ func TestNewReporter_JSON(t *testing.T) {
 	}
 }
 
+func TestNewReporter_Silent(t *testing.T) {
+	Silent = true
+	defer func() { Silent = false }()
+
+	r := NewReporter()
+	if _, ok := r.(reporter.NoopReporter); !ok {
+		t.Errorf("NewReporter() type = %T, want reporter.NoopReporter", r)
+	}
+}
+
+func TestNewReporter_SilentOverridesJSON(t *testing.T) {
+	Silent = true
+	JSONOutput = true
+	defer func() { Silent = false; JSONOutput = false }()
+
+	r := NewReporter()
+	if _, ok := r.(reporter.NoopReporter); !ok {
+		t.Errorf("NewReporter() with Silent+JSON type = %T, want reporter.NoopReporter", r)
+	}
+}
+
 func TestNewReporter_Text(t *testing.T) {
 	JSONOutput = false
 
