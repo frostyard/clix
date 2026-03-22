@@ -9,14 +9,25 @@ import (
 
 // OutputJSON writes data as indented JSON to stdout if JSONOutput is true.
 // Returns true if output was written, false if JSON mode is not active.
-func OutputJSON(data any) bool {
+// If encoding fails, a fallback error envelope is written to stdout and the
+// encoding error is returned alongside true (output was still written).
+func OutputJSON(data any) (bool, error) {
 	if !JSONOutput {
-		return false
+		return false, nil
 	}
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
-	_ = enc.Encode(data)
-	return true
+	if err := enc.Encode(data); err != nil {
+		// Write a fallback error envelope so the "JSON was written" contract holds.
+		fallback := json.NewEncoder(os.Stdout)
+		fallback.SetIndent("", "  ")
+		_ = fallback.Encode(map[string]string{
+			"error":   "true",
+			"message": fmt.Sprintf("failed to encode JSON: %v", err),
+		})
+		return true, err
+	}
+	return true, nil
 }
 
 // OutputJSONError writes a structured error object as JSON to stdout and
@@ -32,7 +43,7 @@ func OutputJSONError(message string, err error) error {
 		"message": message,
 		"details": details,
 	}
-	_ = OutputJSON(errOutput)
+	_, _ = OutputJSON(errOutput)
 	if err != nil {
 		return fmt.Errorf("%s: %w", message, err)
 	}
