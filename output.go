@@ -2,6 +2,7 @@ package clix
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 )
@@ -20,12 +21,20 @@ func OutputJSON(data any) bool {
 
 // OutputJSONError writes a structured error object as JSON to stdout and
 // returns a wrapped error for the caller to propagate.
+// If err is nil, the message alone is used as the error text.
 func OutputJSONError(message string, err error) error {
+	details := message
+	if err != nil {
+		details = err.Error()
+	}
 	errOutput := map[string]any{
 		"error":   true,
 		"message": message,
-		"details": err.Error(),
+		"details": details,
 	}
 	_ = OutputJSON(errOutput)
-	return fmt.Errorf("%s: %w", message, err)
+	if err != nil {
+		return fmt.Errorf("%s: %w", message, err)
+	}
+	return errors.New(message)
 }

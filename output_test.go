@@ -80,3 +80,38 @@ func TestOutputJSONError(t *testing.T) {
 		t.Errorf("message = %v, want %q", got["message"], "deploy failed")
 	}
 }
+
+func TestOutputJSONError_NilError(t *testing.T) {
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	JSONOutput = true
+	defer func() { JSONOutput = false }()
+
+	err := OutputJSONError("something went wrong", nil)
+
+	_ = w.Close()
+	os.Stdout = old
+
+	if err == nil {
+		t.Fatal("OutputJSONError() returned nil error")
+	}
+	if err.Error() != "something went wrong" {
+		t.Errorf("error = %q, want %q", err.Error(), "something went wrong")
+	}
+
+	var buf bytes.Buffer
+	_, _ = buf.ReadFrom(r)
+
+	var got map[string]any
+	if jsonErr := json.Unmarshal(buf.Bytes(), &got); jsonErr != nil {
+		t.Fatalf("invalid JSON: %v", jsonErr)
+	}
+	if got["error"] != true {
+		t.Errorf("error field = %v, want true", got["error"])
+	}
+	if got["details"] != "something went wrong" {
+		t.Errorf("details = %v, want %q", got["details"], "something went wrong")
+	}
+}
