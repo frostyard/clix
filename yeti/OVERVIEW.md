@@ -25,7 +25,7 @@ There are no subpackages or internal directories.
 
 | Direct dependency | Role |
 |---|---|
-| `charmbracelet/fang` | Command execution with version injection and signal handling |
+| `charmbracelet/fang` (v1.0.0) | Command execution with version injection and signal handling |
 | `spf13/cobra` | Command tree and flag parsing |
 | `spf13/viper` | Optional config binding via `BindViper()` |
 | `frostyard/std/reporter` | `Reporter` interface and concrete implementations (`TextReporter`, `JSONReporter`, `NoopReporter`) |
@@ -61,7 +61,7 @@ main() creates App{} with build-time metadata
 **`App.Run(cmd)`** is the main entry point:
 1. Fills zero-value fields with defaults
 2. Calls `registerFlags(cmd)` to add common persistent flags
-3. Delegates to `fang.Execute()` with version string and `SIGINT`/`SIGKILL` handling
+3. Delegates to `fang.Execute()` with version string and `SIGINT`/`SIGTERM` signal handling
 
 ### flags.go — Common Flags
 
@@ -88,7 +88,7 @@ if clix.OutputJSON(result) {
 // fall through to text output
 ```
 
-**`OutputJSONError(message string, err error) error`** — Writes a structured error envelope to stdout (via `OutputJSON`) with fields `error: true`, `message`, and `details`, then returns a wrapped error for the caller to propagate.
+**`OutputJSONError(message string, err error) error`** — Writes a structured error envelope to stdout (via `OutputJSON`) with fields `error: true`, `message`, and `details`, then returns an error for the caller to propagate. If `err` is non-nil, `details` contains `err.Error()` and the returned error wraps it via `fmt.Errorf`; if `err` is nil, `details` falls back to `message` and a plain `errors.New` is returned.
 
 ### reporter.go — Reporter Factory
 
