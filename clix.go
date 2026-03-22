@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"syscall"
 
 	"github.com/charmbracelet/fang"
 	"github.com/spf13/cobra"
@@ -54,6 +55,6 @@ func (a *App) Run(cmd *cobra.Command) error {
 		context.Background(),
 		cmd,
 		fang.WithVersion(a.VersionString()),
-		fang.WithNotifySignal(os.Interrupt, os.Kill),
+		fang.WithNotifySignal(os.Interrupt, syscall.SIGTERM),
 	)
 }
