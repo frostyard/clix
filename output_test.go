@@ -17,13 +17,16 @@ func TestOutputJSON_Active(t *testing.T) {
 	defer func() { JSONOutput = false }()
 
 	data := map[string]string{"key": "value"}
-	ok := OutputJSON(data)
+	ok, err := OutputJSON(data)
 
 	_ = w.Close()
 	os.Stdout = old
 
 	if !ok {
 		t.Error("OutputJSON() returned false when JSONOutput is true")
+	}
+	if err != nil {
+		t.Errorf("OutputJSON() returned unexpected error: %v", err)
 	}
 
 	var buf bytes.Buffer
@@ -40,9 +43,48 @@ func TestOutputJSON_Active(t *testing.T) {
 
 func TestOutputJSON_Inactive(t *testing.T) {
 	JSONOutput = false
-	ok := OutputJSON("anything")
+	ok, err := OutputJSON("anything")
 	if ok {
 		t.Error("OutputJSON() returned true when JSONOutput is false")
+	}
+	if err != nil {
+		t.Errorf("OutputJSON() returned unexpected error: %v", err)
+	}
+}
+
+func TestOutputJSON_EncodeError(t *testing.T) {
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	JSONOutput = true
+	defer func() { JSONOutput = false }()
+
+	// Channels cannot be JSON-encoded.
+	ok, err := OutputJSON(make(chan int))
+
+	_ = w.Close()
+	os.Stdout = old
+
+	if !ok {
+		t.Error("OutputJSON() returned false on encode error; expected true (fallback written)")
+	}
+	if err == nil {
+		t.Fatal("OutputJSON() returned nil error for unencodable type")
+	}
+
+	var buf bytes.Buffer
+	_, _ = buf.ReadFrom(r)
+
+	var got map[string]string
+	if jsonErr := json.Unmarshal(buf.Bytes(), &got); jsonErr != nil {
+		t.Fatalf("fallback output is not valid JSON: %v\nraw: %s", jsonErr, buf.String())
+	}
+	if got["error"] != "true" {
+		t.Errorf("error field = %q, want %q", got["error"], "true")
+	}
+	if got["message"] == "" {
+		t.Error("fallback message is empty")
 	}
 }
 
