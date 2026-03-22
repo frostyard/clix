@@ -19,7 +19,7 @@ reporter.go      — NewReporter() factory
 reporter_test.go
 ```
 
-There are no subpackages or internal directories.
+There are no subpackages or internal directories. CI is defined in `.github/workflows/ci.yml`.
 
 ### Dependencies
 
@@ -80,15 +80,15 @@ Four package-level boolean variables are populated by cobra flag parsing:
 
 ### output.go — JSON Output Helpers
 
-**`OutputJSON(data any) bool`** — If `JSONOutput` is true, writes `data` as indented JSON to stdout and returns true. Returns false (no output) when JSON mode is off. This lets callers do:
+**`OutputJSON(data any) (bool, error)`** — If `JSONOutput` is true, writes `data` as indented JSON to stdout and returns `(true, nil)`. Returns `(false, nil)` when JSON mode is off. If JSON encoding fails, a fallback error envelope is written to stdout (preserving the "JSON was written" contract) and the encoding error is returned as `(true, err)`. Typical usage:
 ```go
-if clix.OutputJSON(result) {
-    return nil
+if written, err := clix.OutputJSON(result); written {
+    return err
 }
 // fall through to text output
 ```
 
-**`OutputJSONError(message string, err error) error`** — Writes a structured error envelope to stdout (via `OutputJSON`) with fields `error: true`, `message`, and `details`, then returns an error for the caller to propagate. If `err` is non-nil, `details` contains `err.Error()` and the returned error wraps it via `fmt.Errorf`; if `err` is nil, `details` falls back to `message` and a plain `errors.New` is returned.
+**`OutputJSONError(message string, err error) error`** — Builds a structured error envelope (`error: true`, `message`, `details`) and writes it via `OutputJSON`, then returns an error for the caller to propagate. If `err` is non-nil, `details` contains `err.Error()` and the returned error wraps it via `fmt.Errorf`; if `err` is nil, `details` falls back to `message` and a plain `errors.New` is returned. Any encoding error from `OutputJSON` is silently discarded (the caller's error takes priority).
 
 ### reporter.go — Reporter Factory
 
@@ -140,11 +140,26 @@ Set via ldflags in the consuming CLI's build:
 go build -ldflags "-X main.version=1.0.0 -X main.commit=$(git rev-parse HEAD) -X main.date=$(date -I) -X main.builtBy=ci"
 ```
 
+## CI
+
+GitHub Actions CI (`.github/workflows/ci.yml`) runs on pushes to `main` and all PRs targeting `main`. Four independent jobs:
+
+| Job | Purpose |
+|---|---|
+| **lint** | `golangci-lint` via `golangci-lint-action@v9` |
+| **test** | `go test -v ./...` |
+| **race** | `go test -race -short ./...` |
+| **verify** | `go mod tidy` drift check, `go vet`, `gofmt` formatting check |
+
+Each concern runs as a separate job for clear failure signals in the GitHub UI. The Makefile `check` target remains for local pre-commit use. No build job — this is a library with no binary artifacts.
+
+The Makefile lint target gracefully skips when `golangci-lint` is not installed (for local dev) but properly fails on lint errors when the binary is present (for CI).
+
 ## Development
 
 ```bash
 make test            # run all tests
-make lint            # golangci-lint
+make lint            # golangci-lint (skips if not installed)
 make check           # fmt + lint + test (pre-commit gate)
 make bump            # tag next semver with svu and push
 go test -v -run TestName ./...  # single test
