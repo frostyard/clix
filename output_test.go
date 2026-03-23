@@ -76,12 +76,12 @@ func TestOutputJSON_EncodeError(t *testing.T) {
 	var buf bytes.Buffer
 	_, _ = buf.ReadFrom(r)
 
-	var got map[string]string
+	var got map[string]any
 	if jsonErr := json.Unmarshal(buf.Bytes(), &got); jsonErr != nil {
 		t.Fatalf("fallback output is not valid JSON: %v\nraw: %s", jsonErr, buf.String())
 	}
-	if got["error"] != "true" {
-		t.Errorf("error field = %q, want %q", got["error"], "true")
+	if got["error"] != true {
+		t.Errorf("error field = %v, want true", got["error"])
 	}
 	if got["message"] == "" {
 		t.Error("fallback message is empty")
