@@ -21,8 +21,8 @@ func OutputJSON(data any) (bool, error) {
 		// Write a fallback error envelope so the "JSON was written" contract holds.
 		fallback := json.NewEncoder(os.Stdout)
 		fallback.SetIndent("", "  ")
-		_ = fallback.Encode(map[string]string{
-			"error":   "true",
+		_ = fallback.Encode(map[string]any{
+			"error":   true,
 			"message": fmt.Sprintf("failed to encode JSON: %v", err),
 		})
 		return true, err
