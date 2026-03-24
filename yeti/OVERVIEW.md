@@ -161,6 +161,11 @@ The Makefile lint target gracefully skips when `golangci-lint` is not installed 
 make test            # run all tests
 make lint            # golangci-lint (skips if not installed)
 make check           # fmt + lint + test (pre-commit gate)
+make test-cover      # tests with coverage report (coverage.html)
+make fmt             # format Go source files
+make tidy            # go mod tidy
+make clean           # remove generated artifacts
 make bump            # tag next semver with svu and push
+make help            # list all targets
 go test -v -run TestName ./...  # single test
 ```
