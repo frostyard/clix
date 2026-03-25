@@ -31,9 +31,12 @@ func TestVersionStringDefaults(t *testing.T) {
 
 func TestRunRegistersFlags(t *testing.T) {
 	// Reset package-level flag state
-	JSONOutput = false
-	Verbose = false
-	DryRun = false
+	defer func() {
+		JSONOutput = false
+		Verbose = false
+		DryRun = false
+		Silent = false
+	}()
 
 	ran := false
 	cmd := &cobra.Command{
@@ -61,5 +64,8 @@ func TestRunRegistersFlags(t *testing.T) {
 	}
 	if cmd.PersistentFlags().Lookup("dry-run") == nil {
 		t.Error("--dry-run flag not registered")
+	}
+	if cmd.PersistentFlags().Lookup("silent") == nil {
+		t.Error("--silent flag not registered")
 	}
 }
