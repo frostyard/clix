@@ -28,7 +28,7 @@ There are no subpackages or internal directories. CI is defined in `.github/work
 | `charmbracelet/fang` v1.0.0 | Command execution with version injection and signal handling |
 | `spf13/cobra` v1.10.2 | Command tree and flag parsing |
 | `spf13/viper` v1.21.0 | Optional config binding via `BindViper()` |
-| `frostyard/std` v0.1.0 (`reporter` subpackage) | `Reporter` interface and concrete implementations (`TextReporter`, `JSONReporter`, `NoopReporter`) |
+| `frostyard/std` v0.2.0 (`reporter` subpackage) | `Reporter` interface and concrete implementations (`TextReporter`, `JSONReporter`, `NoopReporter`) |
 
 ### Data Flow
 
