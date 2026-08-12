@@ -1,0 +1,40 @@
+# AGENTS.md
+
+This file provides guidance to AI coding agents when working with code in this
+repository. It is the canonical agent instructions file — `CLAUDE.md`,
+`GEMINI.md`, and `.cursorrules` are symlinks to it (frostyard/core ADR-0018).
+
+## Project
+
+`github.com/frostyard/clix` is a CLI convenience module for Frostyard tools. It wraps charmbracelet/fang and spf13/cobra with standardized version injection, common flags, JSON output helpers, and reporter factory.
+
+## Commands
+
+```bash
+make test            # run all tests
+make lint            # run golangci-lint
+make check           # fmt + lint + test (pre-commit gate)
+make bump            # tag next semver with svu and push
+go test -v -run TestName ./...  # run a single test
+```
+
+## Architecture
+
+Single flat package `clix` with four source files:
+
+- **clix.go** — `App` struct with `Run()` and `VersionString()`. Wires up fang.Execute with version string and signal handling.
+- **flags.go** — Package-level flag variables (`JSONOutput`, `Verbose`, `DryRun`, `Silent`), registration on cobra commands, and optional `BindViper()`.
+- **output.go** — `OutputJSON()` and `OutputJSONError()` helpers for standardized JSON output to stdout.
+- **reporter.go** — `NewReporter()` factory that returns NoopReporter (`--silent`), TextReporter, or JSONReporter (`--json`) based on flags. Silent takes priority over JSON.
+
+## Conventions
+
+- Go 1.26; use modern Go syntax (range-over-int, omitzero, etc.)
+- One test file per source file, standard `testing` package only
+- Tests use fresh `cobra.Command` per test to avoid flag state leakage
+- Tests capture output via `bytes.Buffer`; JSON tests unmarshal and validate fields
+## Documentation
+
+**update documentation** After any change to source code, update relevant documentation in CLAUDE.md, README.md and the yeti/ folder. A task is not complete without reviewing and updating relevant documentation.
+
+**yeti/ directory** The `yeti/` directory contains documentation written for AI consumption and context enhancement, not primarily for humans. Jobs like `doc-maintainer` and `issue-worker` instruct the AI to read `yeti/OVERVIEW.md` and related files for codebase context before performing tasks. Write content in this directory to be maximally useful to an AI agent understanding the codebase — detailed architecture, patterns, and decision rationale rather than user-facing guides.
