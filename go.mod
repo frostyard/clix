@@ -1,6 +1,6 @@
 module github.com/frostyard/clix
 
-go 1.26
+go 1.26.6
 
 require (
 	github.com/charmbracelet/fang v1.0.0
