@@ -13,7 +13,7 @@ clix.go          — App struct, Run(), VersionString()
 clix_test.go
 flags.go         — Package-level flag variables, registerFlags(), BindViper()
 flags_test.go
-output.go        — OutputJSON(), OutputJSONError()
+output.go        — OutputJSON(), OutputJSONError(), Stdout/Stderr writer seams
 output_test.go
 reporter.go      — NewReporter() factory
 reporter_test.go
@@ -80,7 +80,9 @@ Four package-level boolean variables are populated by cobra flag parsing:
 
 ### output.go — JSON Output Helpers
 
-**`OutputJSON(data any) (bool, error)`** — If `JSONOutput` is true, writes `data` as indented JSON to stdout and returns `(true, nil)`. Returns `(false, nil)` when JSON mode is off. If JSON encoding fails, a fallback error envelope is written to stdout (preserving the "JSON was written" contract) and the encoding error is returned as `(true, err)`. Typical usage:
+**`var Stdout io.Writer`, `var Stderr io.Writer`** — package-level writer seams, `nil` by default. The unexported resolvers `stdout()` / `stderr()` return the override when set and otherwise the *current* `os.Stdout` / `os.Stderr` at call time; they are the only places in the package that read those globals. Every output path (`OutputJSON` including its fallback envelope, `OutputJSONError`, and the reporters built by `NewReporter`) goes through them, so tests in clix and in consuming CLIs capture output with a `bytes.Buffer` instead of swapping the process-global `os.Stdout` (which is process-wide and unsafe under parallel/race tests). The nil default is deliberate: consumers that already swap `os.Stdout` in tests keep working unchanged, byte for byte.
+
+**`OutputJSON(data any) (bool, error)`** — If `JSONOutput` is true, writes `data` as indented JSON to stdout (via the `Stdout` seam) and returns `(true, nil)`. Returns `(false, nil)` when JSON mode is off. If JSON encoding fails, a fallback error envelope is written to stdout (preserving the "JSON was written" contract) and the encoding error is returned as `(true, err)`. Typical usage:
 ```go
 if written, err := clix.OutputJSON(result); written {
     return err
@@ -102,7 +104,7 @@ if written, err := clix.OutputJSON(result); written {
 
 Silent always wins over JSON — this is explicitly tested.
 
-Text reporter writes to stderr to keep stdout clean for data/JSON output.
+Text reporter writes to stderr to keep stdout clean for data/JSON output. Both destinations are resolved through the `Stdout` / `Stderr` seams in `output.go` at the time `NewReporter()` is called.
 
 ## Key Patterns
 
@@ -110,7 +112,7 @@ Text reporter writes to stderr to keep stdout clean for data/JSON output.
 Flags are stored as package-level `var` globals (`JSONOutput`, `Verbose`, `DryRun`, `Silent`). This means consuming code can read flag values directly (e.g., `if clix.Verbose { ... }`) without passing config structs around. The tradeoff is that tests must reset these variables and use fresh `cobra.Command` instances to avoid state leakage.
 
 ### Test isolation
-Every test creates a new `cobra.Command` and explicitly resets package-level flag variables with `defer` cleanup. Tests that capture stdout use `os.Pipe()` and restore `os.Stdout` afterward. JSON output tests unmarshal and validate individual fields.
+Every test creates a new `cobra.Command` and explicitly resets package-level flag variables with `defer` cleanup. Tests that capture output assign a `bytes.Buffer` to `Stdout` / `Stderr` and `defer` a reset to nil — never swap `os.Stdout`, which is process-wide and unsafe under `t.Parallel` / `-race`. Note that `Stdout` / `Stderr` are still shared package-level state, so tests that set them should not run in parallel unless they coordinate access. The older `os.Pipe()` tests in `output_test.go` are kept deliberately: they prove the nil default still honors a swapped `os.Stdout`, which downstream CLIs rely on. JSON output tests unmarshal and validate individual fields.
 
 ### Silent > JSON > Text priority
 The reporter factory and output helpers follow a consistent priority: `--silent` suppresses everything, `--json` switches to structured output, and the default is human-readable text on stderr. This convention should be maintained in any new output paths.

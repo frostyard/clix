@@ -77,7 +77,7 @@ Single flat package `clix` with four source files:
 
 - **clix.go** — `App` struct with `Run()` and `VersionString()`. Wires up fang.Execute with version string and signal handling.
 - **flags.go** — Package-level flag variables (`JSONOutput`, `Verbose`, `DryRun`, `Silent`), registration on cobra commands, and optional `BindViper()`.
-- **output.go** — `OutputJSON()` and `OutputJSONError()` helpers for standardized JSON output to stdout.
+- **output.go** — `OutputJSON()` and `OutputJSONError()` helpers for standardized JSON output to stdout, plus the `Stdout`/`Stderr` writer seams (nil = current `os.Stdout`/`os.Stderr`) that every output path resolves through.
 - **reporter.go** — `NewReporter()` factory that returns NoopReporter (`--silent`), TextReporter, or JSONReporter (`--json`) based on flags. Silent takes priority over JSON.
 
 Plus the end-to-end suite: **tests/e2e/** — `e2e_test.go` builds
@@ -91,7 +91,7 @@ codes ([tests/e2e/README.md](tests/e2e/README.md)).
 - Go 1.26; use modern Go syntax (range-over-int, omitzero, etc.)
 - One test file per source file, standard `testing` package only
 - Tests use fresh `cobra.Command` per test to avoid flag state leakage
-- Tests capture output via `bytes.Buffer`; JSON tests unmarshal and validate fields
+- Tests capture output via `bytes.Buffer` assigned to `clix.Stdout` / `clix.Stderr` (with `defer` reset to nil), never by swapping `os.Stdout`; JSON tests unmarshal and validate fields. The `os.Pipe` tests in `output_test.go` stay as the compatibility proof that the nil default still honors a swapped `os.Stdout`.
 - clix is a library every Frostyard CLI depends on: exported identifiers
   keep doc comments; a breaking change to `App`, the flag variables,
   `OutputJSON`/`OutputJSONError`, `NewReporter`, or `BindViper` is
