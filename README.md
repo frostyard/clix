@@ -102,7 +102,10 @@ Every clix output path — `OutputJSON`, `OutputJSONError`, and the reporters
 from `NewReporter` — writes through two package-level writer seams,
 `clix.Stdout` and `clix.Stderr`. Both default to `nil`, meaning "the current
 `os.Stdout` / `os.Stderr` at call time", so production behavior is unchanged
-and consumers that already swap `os.Stdout` in tests keep working. In tests,
+and consumers that already swap `os.Stdout` in tests keep working. `Stdout` /
+`Stderr` are shared package-level variables, so tests that set them should not
+run in parallel unless they coordinate access. In tests, assign a
+`bytes.Buffer` instead of touching the process globals:
 assign a `bytes.Buffer` instead of touching the process globals:
 
 ```go
