@@ -146,7 +146,7 @@ GitHub Actions CI (`.github/workflows/ci.yml`) runs on pushes to `main` and all 
 
 | Job | Purpose |
 |---|---|
-| **lint** | `golangci-lint` via `golangci-lint-action@v9`, configured by `.golangci.yml` (the same file `make lint` reads) |
+| **lint** | `golangci-lint` via `golangci-lint-action@v9`, installing the release pinned as `GOLANGCI_LINT_VERSION` in the `Makefile` (read by a `sed` step; bump it in a dedicated commit), configured by `.golangci.yml` (the same file `make lint` reads) |
 | **test** | `go test -v ./...` — unit tests plus the `tests/e2e/` suite |
 | **race** | `go test -race -short ./...` |
 | **verify** | `go mod tidy` drift check, `go vet`, `gofmt` formatting check |
@@ -154,7 +154,7 @@ GitHub Actions CI (`.github/workflows/ci.yml`) runs on pushes to `main` and all 
 
 Each concern runs as a separate job for clear failure signals in the GitHub UI. The Makefile `check` target remains for local pre-commit use. No build job — this is a library with no binary artifacts. The whole declare → review → gate → learn → observe loop is described in [quality-loop.md](quality-loop.md).
 
-The Makefile lint target gracefully skips when `golangci-lint` is not installed (for local dev) but properly fails on lint errors when the binary is present (for CI).
+The Makefile lint target gracefully skips when `golangci-lint` is not installed (for local dev), warns when the installed release differs from `GOLANGCI_LINT_VERSION` (so a local run is not silently linted by a different version than CI), and properly fails on lint errors when the binary is present (for CI).
 
 ## Release
 
