@@ -19,7 +19,7 @@ reporter.go      — NewReporter() factory
 reporter_test.go
 ```
 
-There are no subpackages or internal directories. CI is defined in `.github/workflows/ci.yml`.
+There are no subpackages or internal directories apart from the end-to-end suite in `tests/e2e/` (a black-box test that builds `tests/e2e/exampletool`, a consumer program, and runs it as a subprocess — see [tests/e2e/README.md](../../tests/e2e/README.md)). CI is defined in `.github/workflows/ci.yml`; releases in `.github/workflows/release.yml`.
 
 ### Dependencies
 
@@ -142,18 +142,23 @@ go build -ldflags "-X main.version=1.0.0 -X main.commit=$(git rev-parse HEAD) -X
 
 ## CI
 
-GitHub Actions CI (`.github/workflows/ci.yml`) runs on pushes to `main` and all PRs targeting `main`. Four independent jobs:
+GitHub Actions CI (`.github/workflows/ci.yml`) runs on pushes to `main` and all PRs targeting `main`. Five independent jobs:
 
 | Job | Purpose |
 |---|---|
-| **lint** | `golangci-lint` via `golangci-lint-action@v9` |
-| **test** | `go test -v ./...` |
+| **lint** | `golangci-lint` via `golangci-lint-action@v9`, configured by `.golangci.yml` (the same file `make lint` reads) |
+| **test** | `go test -v ./...` — unit tests plus the `tests/e2e/` suite |
 | **race** | `go test -race -short ./...` |
 | **verify** | `go mod tidy` drift check, `go vet`, `gofmt` formatting check |
+| **docs-gate** | `node scripts/check-docs.mjs` — docs-index coverage, relative-link integrity, symlink (alias) resolution against `.coverage-thresholds.json` |
 
-Each concern runs as a separate job for clear failure signals in the GitHub UI. The Makefile `check` target remains for local pre-commit use. No build job — this is a library with no binary artifacts.
+Each concern runs as a separate job for clear failure signals in the GitHub UI. The Makefile `check` target remains for local pre-commit use. No build job — this is a library with no binary artifacts. The whole declare → review → gate → learn → observe loop is described in [quality-loop.md](quality-loop.md).
 
 The Makefile lint target gracefully skips when `golangci-lint` is not installed (for local dev) but properly fails on lint errors when the binary is present (for CI).
+
+## Release
+
+`make bump` runs `make check`, refuses a dirty tree, tags the next semantic version with `svu next` (`.svu.yaml`: `v` prefix, conventional-commit derived), and pushes the tag. The tag push runs `.github/workflows/release.yml`, which runs GoReleaser Pro against `.goreleaser.yaml` with `builds: skip: true` — no binaries, archives, or packages, only a GitHub release whose notes are grouped by conventional-commit type. Consumers upgrade with `go get github.com/frostyard/clix@<tag>`. Rationale and the protected-boundary status of these files: [ADR-0001](../adr/0001-acmm-conformance-via-canonical-aliases.md), `policies/agent-governance.json`.
 
 ## Development
 
@@ -165,7 +170,9 @@ make test-cover      # tests with coverage report (coverage.html)
 make fmt             # format Go source files
 make tidy            # go mod tidy
 make clean           # remove generated artifacts
-make bump            # tag next semver with svu and push
+make bump            # tag next semver with svu and push (the tag push publishes the release)
 make help            # list all targets
 go test -v -run TestName ./...  # single test
+go test -v ./tests/e2e/...      # end-to-end suite alone
+node scripts/check-docs.mjs     # docs-integrity gate
 ```

@@ -44,7 +44,7 @@ func main() {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Use the reporter for progress output
 			r := clix.NewReporter()
-			r.Info("doing work...")
+			r.Message("doing work...")
 
 			result := map[string]string{"status": "ok"}
 
@@ -114,5 +114,7 @@ This binds `--json`, `--verbose`, `--dry-run`, and `--silent` to viper keys so t
 make test            # run all tests
 make lint            # run golangci-lint
 make check           # fmt + lint + test (pre-commit gate)
-make bump            # tag next semver with svu and push
+make bump            # tag next semver with svu and push; the tag push publishes the GitHub release
 ```
+
+The e2e suite in [`tests/e2e/`](tests/e2e/README.md) builds a consumer program wired like the example above and runs it as a subprocess. Contributing guide: [AGENTS.md](AGENTS.md) (`CONTRIBUTING.md` resolves to it).
