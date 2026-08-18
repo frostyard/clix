@@ -26,7 +26,7 @@ jobs:
       - name: Read pinned golangci-lint version
         id: lint-version
         run: |
-          version="$(sed -nE 's/^GOLANGCI_LINT_VERSION[[:space:]]*:?=[[:space:]]*//p' Makefile | head -n 1 | tr -d '\r')"
+          version="$(sed -nE 's/^GOLANGCI_LINT_VERSION[[:space:]]*:?=[[:space:]]*//p' Makefile | tr -d '\r')"
           version="${version%%[[:space:]]*}"
           test -n "$version"
           printf 'version=v%s\n' "$version" >> "$GITHUB_OUTPUT"
