@@ -37,8 +37,11 @@ PR template ──► review rubric ──► CI gates ──► corrections ─
   decision.
 - **Gate** — [.github/workflows/ci.yml](../../.github/workflows/ci.yml)
   runs on every PR and push to `main`, one job per concern:
-  - *Lint* (`golangci-lint-action`, configured by `.golangci.yml` — the same
-    file `make lint` reads), *Unit Tests* (`go test -v ./...`, which includes
+  - *Lint* (`golangci-lint-action`, installing the release pinned as
+    `GOLANGCI_LINT_VERSION` in the `Makefile` — the single place to bump it;
+    `make lint` warns when the local binary differs — configured by
+    `.golangci.yml`, the same file `make lint` reads), *Unit Tests*
+    (`go test -v ./...`, which includes
     the [e2e suite](../../tests/e2e/README.md)), *Race Detection*
     (`go test -race -short ./...`), *Verify* (`go mod tidy` drift, `go vet`,
     `gofmt`) — `make check` (fmt → lint → test) reproduces the local subset.

@@ -43,9 +43,12 @@ improvising, whichever agent you are:
 - **Go 1.26.6 or newer** (the module targets `go 1.26.6`)
 - `make`
 - Optional: [`golangci-lint`](https://golangci-lint.run/) (v2) for `make lint`
-  — `make lint` skips with a message when it is missing; CI always runs it
-  with `.golangci.yml`; [`svu`](https://github.com/caarlos0/svu) for
-  `make bump`; Node ≥ 20 for the docs-integrity gate
+  — `make lint` skips with a message when it is missing and warns when the
+  installed release differs from `GOLANGCI_LINT_VERSION` in the `Makefile`; CI always runs exactly that pinned release with
+  `.golangci.yml`, so install it with
+  `go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v<version>`;
+  [`svu`](https://github.com/caarlos0/svu) for `make bump`; Node ≥ 20 for
+  the docs-integrity gate
 
 clix is a library: there is no binary to build or install. Building and
 testing needs nothing beyond the Go toolchain (the e2e suite builds its own
@@ -55,7 +58,8 @@ throwaway consumer program with `go build`).
 
 ```bash
 make test            # run all tests (unit tests + tests/e2e/)
-make lint            # run golangci-lint (.golangci.yml; skips if not installed)
+make lint            # run golangci-lint (.golangci.yml; skips if not installed,
+                     # warns if not the GOLANGCI_LINT_VERSION pinned in the Makefile)
 make check           # fmt + lint + test (pre-commit gate)
 make test-cover      # tests with coverage report (coverage.html)
 make fmt             # format Go source files
@@ -183,7 +187,8 @@ and never merge, approve, or release your own work (`.claude/settings.json`
 denies these at the tool layer).
 
 CI runs on every pull request (`.github/workflows/ci.yml`) and must pass:
-lint (golangci-lint with `.golangci.yml`), unit tests (`go test -v ./...`,
+lint (the golangci-lint release pinned as `GOLANGCI_LINT_VERSION` in the
+`Makefile`, with `.golangci.yml`), unit tests (`go test -v ./...`,
 including `tests/e2e/`), race-detector tests, verification (`go mod tidy`
 cleanliness, `go vet`, `gofmt`), and docs integrity
 (`scripts/check-docs.mjs`). The whole loop — declare, review, gate, learn,
