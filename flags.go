@@ -21,7 +21,7 @@ func registerFlags(cmd *cobra.Command) {
 	cmd.PersistentFlags().BoolVarP(&Silent, "silent", "s", false, "suppress all progress output")
 }
 
-// BindViper binds the common flags (--json, --verbose, --dry-run) to viper.
+// BindViper binds the common flags (--json, --verbose, --dry-run, --silent) to viper.
 // Call this in a PersistentPreRunE if your app uses viper for config management.
 func BindViper(cmd *cobra.Command) error {
 	for _, name := range []string{"json", "verbose", "dry-run", "silent"} {
