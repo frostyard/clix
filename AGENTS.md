@@ -44,8 +44,7 @@ improvising, whichever agent you are:
 - `make`
 - Optional: [`golangci-lint`](https://golangci-lint.run/) (v2) for `make lint`
   — `make lint` skips with a message when it is missing and warns when the
-  installed release differs from `GOLANGCI_LINT_VERSION` in the `Makefile`
-  (currently 2.12.2); CI always runs exactly that pinned release with
+  installed release differs from `GOLANGCI_LINT_VERSION` in the `Makefile`; CI always runs exactly that pinned release with
   `.golangci.yml`, so install it with
   `go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v<version>`;
   [`svu`](https://github.com/caarlos0/svu) for `make bump`; Node ≥ 20 for
