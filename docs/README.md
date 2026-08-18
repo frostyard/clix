@@ -14,17 +14,28 @@ shape, [core ADR-0025](https://github.com/frostyard/core/blob/main/docs/adr/0025
 
 ### Decisions (ADRs)
 
-*(none yet — org-wide decisions binding this repo are listed in
-[org-adrs.md](org-adrs.md))*
+- [0001 — ACMM conformance via canonical aliases](adr/0001-acmm-conformance-via-canonical-aliases.md)
+  — `AGENTS.md` canonical, committed relative symlinks at the ACMM paths,
+  real trees for directory criteria, the docs-integrity gate, the Fluent
+  enrollment surface (`policies/agent-governance.json`), and the GoReleaser
+  release flow behind `make bump`
+
+Org-wide decisions binding this repo are listed in [org-adrs.md](org-adrs.md).
 
 ### Design
 
 - [Overview](design/overview.md) — purpose, architecture, source file
   details, key patterns, configuration, CI (the entry-point doc)
+- [Quality loop](design/quality-loop.md) — declare → review → gate → learn →
+  observe, wired to `ci.yml`, `docs-gate`, `.memory/`, and the release flow
+  (`docs/quality.md` resolves here)
 
 ### Specs
 
-*(none yet)*
+- [PR acceptance metric](specs/pr-acceptance-metric.md) — the monthly
+  acceptance-rate definition and rules (`docs/metrics.md` resolves here)
+- [PR review rubric](specs/pr-review-rubric.md) — the rows every review
+  applies (`docs/review-rubric.md` resolves here)
 
 ### Plans
 
@@ -41,4 +52,10 @@ shape, [core ADR-0025](https://github.com/frostyard/core/blob/main/docs/adr/0025
 - Design docs are updated in place to always reflect reality.
 - Specs change only alongside the code that implements them.
 - Cross-links between categories are mandatory in both directions.
-- Adding a doc means adding it to the index above.
+- Adding a doc means adding it to the index above; `node scripts/check-docs.mjs`
+  (the `docs-gate` CI job) fails on an unindexed doc, a dead relative link,
+  or a broken alias.
+- Conformance aliases (`docs/metrics.md`, `docs/review-rubric.md`,
+  `docs/quality.md`) are symlinks registered in
+  [ADR-0001](adr/0001-acmm-conformance-via-canonical-aliases.md); they are
+  not docs, are not indexed, and are never edited — their targets are.

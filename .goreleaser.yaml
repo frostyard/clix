@@ -1,0 +1,54 @@
+# GoReleaser configuration for clix — a Go LIBRARY: nothing is built or
+# archived; a tag push (from `make bump`, which tags with svu) runs
+# .github/workflows/release.yml, and this file only shapes the GitHub release
+# and its conventional-commit-grouped changelog. See
+# https://goreleaser.com and docs/adr/0001-acmm-conformance-via-canonical-aliases.md.
+# yaml-language-server: $schema=https://goreleaser.com/static/schema-pro.json
+
+version: 2
+pro: true
+
+project_name: clix
+
+# Library: no binaries, no archives, no packages.
+builds:
+  - skip: true
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - "^test:"
+      - "^chore"
+      - "merge conflict"
+      - Merge pull request
+      - Merge remote-tracking branch
+      - Merge branch
+      - go mod tidy
+  groups:
+    - title: Dependency updates
+      regexp: "^.*feat\\(deps\\)*:+.*$"
+      order: 300
+    - title: "New Features"
+      regexp: "^.*feat[(\\w)]*:+.*$"
+      order: 100
+    - title: "Bug fixes"
+      regexp: "^.*fix[(\\w)]*:+.*$"
+      order: 200
+    - title: "Documentation updates"
+      regexp: "^.*docs[(\\w)]*:+.*$"
+      order: 400
+    - title: Other work
+      order: 9999
+
+release:
+  github:
+    owner: frostyard
+    name: clix
+  draft: false
+  prerelease: auto
+  footer: |
+    **Full Changelog**: https://github.com/frostyard/{{ .ProjectName }}/compare/{{ .PreviousTag }}...{{ .Tag }}
+
+    Consume this release with `go get github.com/frostyard/clix@{{ .Tag }}`.
