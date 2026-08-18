@@ -4,22 +4,58 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 )
+
+// Stdout, when non-nil, replaces the process's standard output for every
+// clix output path (OutputJSON, OutputJSONError, and the JSON reporter from
+// NewReporter). It exists so tests — in clix and in consuming CLIs — can
+// capture output with a bytes.Buffer instead of swapping os.Stdout.
+// It defaults to nil, which means "use the current os.Stdout at call time",
+// so consumers that already swap os.Stdout keep working unchanged.
+var Stdout io.Writer
+
+// Stderr, when non-nil, replaces the process's standard error for the text
+// reporter returned by NewReporter. Same contract as Stdout: nil means "use
+// the current os.Stderr at call time".
+var Stderr io.Writer
+
+// stdout resolves the writer for stdout output: the Stdout override when
+// set, otherwise the current os.Stdout. This is the only place clix reads
+// os.Stdout for output.
+func stdout() io.Writer {
+	if Stdout != nil {
+		return Stdout
+	}
+	return os.Stdout
+}
+
+// stderr resolves the writer for stderr output: the Stderr override when
+// set, otherwise the current os.Stderr. This is the only place clix reads
+// os.Stderr for output.
+func stderr() io.Writer {
+	if Stderr != nil {
+		return Stderr
+	}
+	return os.Stderr
+}
 
 // OutputJSON writes data as indented JSON to stdout if JSONOutput is true.
 // Returns true if output was written, false if JSON mode is not active.
 // If encoding fails, a fallback error envelope is written to stdout and the
 // encoding error is returned alongside true (output was still written).
+// Output goes to Stdout when set, otherwise to os.Stdout.
 func OutputJSON(data any) (bool, error) {
 	if !JSONOutput {
 		return false, nil
 	}
-	enc := json.NewEncoder(os.Stdout)
+	w := stdout()
+	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(data); err != nil {
 		// Write a fallback error envelope so the "JSON was written" contract holds.
-		fallback := json.NewEncoder(os.Stdout)
+		fallback := json.NewEncoder(w)
 		fallback.SetIndent("", "  ")
 		_ = fallback.Encode(map[string]any{
 			"error":   true,

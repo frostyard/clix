@@ -96,6 +96,32 @@ Flag values are available as package-level variables: `clix.JSONOutput`, `clix.V
 
 Silent always takes priority over JSON. Text output goes to stderr to keep stdout clean for data.
 
+## Testing output
+
+Every clix output path — `OutputJSON`, `OutputJSONError`, and the reporters
+from `NewReporter` — writes through two package-level writer seams,
+`clix.Stdout` and `clix.Stderr`. Both default to `nil`, meaning "the current
+`os.Stdout` / `os.Stderr` at call time", so production behavior is unchanged
+and consumers that already swap `os.Stdout` in tests keep working. In tests,
+assign a `bytes.Buffer` instead of touching the process globals:
+
+```go
+func TestStatusJSON(t *testing.T) {
+	var out bytes.Buffer
+	clix.Stdout = &out
+	defer func() { clix.Stdout = nil }()
+	clix.JSONOutput = true
+	defer func() { clix.JSONOutput = false }()
+
+	// ... run the command ...
+
+	var got map[string]any
+	if err := json.Unmarshal(out.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+}
+```
+
 ## Viper Integration
 
 If your CLI uses [spf13/viper](https://github.com/spf13/viper) for config, bind the common flags in `PersistentPreRunE`:
