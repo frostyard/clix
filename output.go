@@ -84,6 +84,8 @@ func OutputJSON(data any) (bool, error) {
 // OutputJSONError writes a structured error object as JSON to stdout and
 // returns a wrapped error for the caller to propagate.
 // If err is nil, the message alone is used as the error text.
+// If writing the JSON envelope fails, the returned error preserves both the
+// caller's error and the output failure.
 func OutputJSONError(message string, err error) error {
 	details := message
 	if err != nil {
@@ -94,9 +96,14 @@ func OutputJSONError(message string, err error) error {
 		"message": message,
 		"details": details,
 	}
-	_, _ = OutputJSON(errOutput)
+
+	var commandErr error
 	if err != nil {
-		return fmt.Errorf("%s: %w", message, err)
+		commandErr = fmt.Errorf("%s: %w", message, err)
+	} else {
+		commandErr = errors.New(message)
 	}
-	return errors.New(message)
+
+	_, outputErr := OutputJSON(errOutput)
+	return errors.Join(commandErr, outputErr)
 }
