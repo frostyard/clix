@@ -40,7 +40,10 @@ PR template ──► review rubric ──► CI gates ──► corrections ─
   - *Lint* (`golangci-lint-action`, installing the release pinned as
     `GOLANGCI_LINT_VERSION` in the `Makefile` — the single place to bump it;
     `make lint` warns when the local binary differs — configured by
-    `.golangci.yml`, the same file `make lint` reads), *Unit Tests*
+    `.golangci.yml`, the same file `make lint` reads), *Security Scan*
+    (`govulncheck ./...` with `golang.org/x/vuln/cmd/govulncheck@v1.6.0`
+    pinned — fails on a reachable vulnerability anywhere in the module
+    graph, including indirect modules Dependabot never proposes), *Unit Tests*
     (`go test -v ./...`, which includes
     the [e2e suite](../../tests/e2e/README.md)), *Race Detection*
     (`go test -race -short ./...`), *Verify* (`go mod tidy` drift, `go vet`,
