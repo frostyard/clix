@@ -48,9 +48,16 @@ func (a *App) VersionString() string {
 
 // Run registers common persistent flags on cmd, then executes the command
 // via fang.Execute with the formatted version string and signal handling.
+//
+// The flags --json, --verbose/-v, --dry-run/-n, and --silent/-s are reserved
+// by clix on the root command. If cmd already defines one of those names or
+// shorthands, Run returns an error naming the collision before executing
+// anything, rather than letting pflag panic.
 func (a *App) Run(cmd *cobra.Command) error {
 	a.defaults()
-	registerFlags(cmd)
+	if err := registerFlags(cmd); err != nil {
+		return err
+	}
 	return fang.Execute(
 		context.Background(),
 		cmd,
