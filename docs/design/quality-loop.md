@@ -58,9 +58,10 @@ PR template ──► review rubric ──► CI gates ──► corrections ─
     `gofmt`) — `make check` (fmt → lint → test → test-coverage-check →
     coverage-check) reproduces the local subset.
   - *Docs integrity* (`docs-gate`): `node scripts/check-docs.mjs` checks
-    docs-index coverage, relative-link integrity, and symlink resolution
-    against [.coverage-thresholds.json](../../.coverage-thresholds.json) —
-    all 1.0, `never_relax: true` (the loop may tighten, never loosen).
+    docs-index coverage, relative-link integrity, symlink resolution, and the
+    documented CI job inventory against
+    [.coverage-thresholds.json](../../.coverage-thresholds.json) — all 1.0,
+    `never_relax: true` (the loop may tighten, never loosen).
   - *Release config* (`release-config`): `goreleaser check` validates
     [`.goreleaser.yaml`](../../.goreleaser.yaml) on every pull request, so a
     broken release configuration fails before merge instead of on a tag push,

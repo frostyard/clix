@@ -54,7 +54,7 @@ Org-wide decisions binding this repo are listed in [org-adrs.md](org-adrs.md).
 - Cross-links between categories are mandatory in both directions.
 - Adding a doc means adding it to the index above; `node scripts/check-docs.mjs`
   (the `docs-gate` CI job) fails on an unindexed doc, a dead relative link,
-  or a broken alias.
+  a broken alias, or drift between the workflow and documented CI job inventories.
 - Conformance aliases (`docs/metrics.md`, `docs/review-rubric.md`,
   `docs/quality.md`) are symlinks registered in
   [ADR-0001](adr/0001-acmm-conformance-via-canonical-aliases.md); they are

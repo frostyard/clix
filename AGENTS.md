@@ -71,7 +71,7 @@ make bump            # tag next semver with svu and push (the tag push publishes
 make help            # list all targets
 go test -v -run TestName ./...  # run a single test
 go test -v ./tests/e2e/...      # end-to-end suite alone
-node scripts/check-docs.mjs     # docs-integrity gate (index, links, aliases)
+node scripts/check-docs.mjs     # docs-integrity gate (index, links, aliases, CI job inventory)
 ```
 
 Run `make check` before opening a pull request; CI additionally checks
@@ -146,7 +146,8 @@ review-required at high risk).
 **docs-integrity gate** `node scripts/check-docs.mjs` (the `docs-gate` CI
 job) fails on any unindexed doc in the four categories, any dead relative
 link in `AGENTS.md`/`README.md`/`docs/`/`.github/prompts/`/`.memory/`/
-`tests/e2e/`, or any broken/repo-escaping symlink; thresholds in
+`tests/e2e/`, any broken/repo-escaping symlink, or drift between the CI job
+inventory in `.github/workflows/ci.yml` and `docs/design/overview.md`; thresholds in
 `.coverage-thresholds.json` are all 1.0 with `never_relax: true`.
 
 **conformance aliases** Conformance alias symlinks are listed in

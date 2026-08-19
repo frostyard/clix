@@ -153,7 +153,7 @@ go build -ldflags "-X main.version=1.0.0 -X main.commit=$(git rev-parse HEAD) -X
 
 ## CI
 
-GitHub Actions CI (`.github/workflows/ci.yml`) runs on pushes to `main` and all PRs targeting `main`. Six independent jobs:
+GitHub Actions CI (`.github/workflows/ci.yml`) runs on pushes to `main` and all PRs targeting `main`. Seven independent jobs:
 
 | Job | Purpose |
 |---|---|
@@ -162,7 +162,8 @@ GitHub Actions CI (`.github/workflows/ci.yml`) runs on pushes to `main` and all 
 | **test** | `go test -v -coverprofile=coverage.out -covermode=atomic -coverpkg=github.com/frostyard/clix ./...` — unit tests plus the `tests/e2e/` suite, then `make test-coverage-check` and `make coverage-check` (95.0% statement-coverage floor on the `clix` package) |
 | **race** | `go test -race ./...` — the whole suite under the race detector; `concurrency_test.go` supplies the concurrent workload that gives the job something to detect |
 | **verify** | `go mod tidy` drift check, `go vet`, `gofmt` formatting check |
-| **docs-gate** | `node scripts/check-docs.mjs` — docs-index coverage, relative-link integrity, symlink (alias) resolution against `.coverage-thresholds.json` |
+| **docs-gate** | `node scripts/check-docs.mjs` — docs-index coverage, relative-link integrity, symlink (alias) resolution, and CI job inventory agreement against `.coverage-thresholds.json` |
+| **release-config** | GoReleaser Pro `goreleaser check` validates `.goreleaser.yaml` before merge, using the `~> v2` release line |
 
 Each concern runs as a separate job for clear failure signals in the GitHub UI. The Makefile `check` target remains for local pre-commit use. No build job — this is a library with no binary artifacts. The whole declare → review → gate → learn → observe loop is described in [quality-loop.md](quality-loop.md).
 
