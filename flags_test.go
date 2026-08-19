@@ -1,6 +1,7 @@
 package clix
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -64,5 +65,114 @@ func TestBindViper(t *testing.T) {
 		if !viper.GetBool(name) {
 			t.Errorf("viper key %q not bound to --%s: GetBool = false after flag set", name, name)
 		}
+	}
+}
+
+// TestRegisterFlags_CommandTree pins that the reserved-flag guard covers
+// every subcommand, not just the root: cobra merges each command's local
+// flags with its ancestors' persistent flags at parse time, so a subcommand
+// shorthand collision panics in pflag when that subcommand runs, and a name
+// collision silently shadows clix's flag. registerFlags must refuse both
+// before anything executes, naming the command path and the flag.
+func TestRegisterFlags_CommandTree(t *testing.T) {
+	cases := []struct {
+		name    string
+		build   func() *cobra.Command
+		wantErr []string // substrings; empty means no error
+	}{
+		{
+			name: "subcommand local shorthand collision",
+			build: func() *cobra.Command {
+				root := &cobra.Command{Use: "probe"}
+				sub := &cobra.Command{Use: "sub", RunE: func(*cobra.Command, []string) error { return nil }}
+				var name string
+				sub.Flags().StringVarP(&name, "name", "n", "", "local -n on the subcommand")
+				root.AddCommand(sub)
+				return root
+			},
+			wantErr: []string{`clix: command "probe sub" already defines shorthand -n (used by --name)`},
+		},
+		{
+			name: "nested sub-subcommand persistent name collision",
+			build: func() *cobra.Command {
+				root := &cobra.Command{Use: "probe"}
+				sub := &cobra.Command{Use: "sub"}
+				leaf := &cobra.Command{Use: "leaf", RunE: func(*cobra.Command, []string) error { return nil }}
+				var verbose bool
+				leaf.PersistentFlags().BoolVar(&verbose, "verbose", false, "persistent --verbose two levels down")
+				sub.AddCommand(leaf)
+				root.AddCommand(sub)
+				return root
+			},
+			wantErr: []string{`clix: command "probe sub leaf" already defines flag --verbose`},
+		},
+		{
+			name: "subcommand with non-colliding flags",
+			build: func() *cobra.Command {
+				root := &cobra.Command{Use: "probe"}
+				sub := &cobra.Command{Use: "sub", RunE: func(*cobra.Command, []string) error { return nil }}
+				var name string
+				var force bool
+				sub.Flags().StringVarP(&name, "name", "m", "", "a shorthand clix does not reserve")
+				sub.PersistentFlags().BoolVarP(&force, "force", "f", false, "another one")
+				root.AddCommand(sub)
+				return root
+			},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Cleanup(func() { JSONOutput, Verbose, DryRun, Silent = false, false, false, false })
+			root := tc.build()
+			err := registerFlags(root)
+			if len(tc.wantErr) == 0 {
+				if err != nil {
+					t.Fatalf("registerFlags() error = %v, want nil", err)
+				}
+				if root.PersistentFlags().Lookup("dry-run") == nil {
+					t.Error("--dry-run not registered on the root")
+				}
+				return
+			}
+			if err == nil {
+				t.Fatal("registerFlags() = nil error, want a reserved-flag collision")
+			}
+			for _, want := range tc.wantErr {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("registerFlags() error = %q, want it to contain %q", err, want)
+				}
+			}
+			// The guard refuses before registering: nothing was added to the root.
+			if root.PersistentFlags().Lookup("json") != nil {
+				t.Error("clix flags were registered despite the collision")
+			}
+		})
+	}
+}
+
+// TestRunSubcommandCollisionReturnsBeforeExecuting pins the App.Run contract
+// for the subcommand case: the error surfaces from Run itself, and the
+// subcommand never executes (against main this reached pflag's
+// "unable to redefine 'n' shorthand" panic when the subcommand ran).
+func TestRunSubcommandCollisionReturnsBeforeExecuting(t *testing.T) {
+	t.Cleanup(func() { JSONOutput, Verbose, DryRun, Silent = false, false, false, false })
+
+	ran := false
+	root := &cobra.Command{Use: "probe"}
+	sub := &cobra.Command{Use: "sub", RunE: func(*cobra.Command, []string) error { ran = true; return nil }}
+	var name string
+	sub.Flags().StringVarP(&name, "name", "n", "", "local -n on the subcommand")
+	root.AddCommand(sub)
+	root.SetArgs([]string{"sub"})
+
+	err := runNoPanic(t, &App{Version: "1.0.0"}, root)
+	if err == nil {
+		t.Fatal("Run() = nil error, want reserved-shorthand collision error for the subcommand")
+	}
+	if !strings.Contains(err.Error(), `command "probe sub"`) || !strings.Contains(err.Error(), "-n") {
+		t.Errorf("Run() error = %q, want it to name the subcommand and -n", err)
+	}
+	if ran {
+		t.Error("subcommand executed despite the collision")
 	}
 }
