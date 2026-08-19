@@ -1,4 +1,4 @@
-.PHONY: all clean fmt lint test test-cover tidy check bump help
+.PHONY: all clean fmt lint test test-cover coverage-check test-coverage-check tidy check bump help
 
 # Go commands
 GO := go
@@ -28,9 +28,17 @@ lint:
 		echo "golangci-lint not installed, skipping"; \
 	fi
 
-## test: Run tests
+## test: Run tests (writes coverage.out for the clix package across every test package)
 test:
-	$(GO) test -v ./...
+	$(GO) test -v -coverprofile=coverage.out -covermode=atomic -coverpkg=github.com/frostyard/clix ./...
+
+## coverage-check: Enforce the 95.0% total statement-coverage floor on coverage.out (scripts/check-coverage.sh)
+coverage-check:
+	./scripts/check-coverage.sh
+
+## test-coverage-check: Self-test scripts/check-coverage.sh against fixture profiles
+test-coverage-check:
+	./scripts/test-coverage-check.sh
 
 ## test-cover: Run tests with coverage
 test-cover:
@@ -46,8 +54,8 @@ clean:
 	rm -f coverage.out coverage.html
 	$(GO) clean
 
-## check: Run fmt, lint, and test
-check: fmt lint test
+## check: Run fmt, lint, test, and the coverage floor
+check: fmt lint test test-coverage-check coverage-check
 
 ## bump: Tag and push next version (requires clean tree and svu)
 bump:
