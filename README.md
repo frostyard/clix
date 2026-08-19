@@ -49,9 +49,16 @@ func main() {
 
 			result := map[string]string{"status": "ok"}
 
-			// OutputJSON writes to stdout when --json is set
-			if written, err := clix.OutputJSON(result); written {
+			// OutputJSON writes to stdout when --json is set. An error means
+			// the JSON could not be encoded (a fallback envelope was written)
+			// or could not be written at all (nothing reached stdout); either
+			// way, report it rather than falling through to text.
+			written, err := clix.OutputJSON(result)
+			if err != nil {
 				return err
+			}
+			if written {
+				return nil
 			}
 
 			// Fall through to text output

@@ -1,6 +1,7 @@
 package clix
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -42,16 +43,27 @@ func stderr() io.Writer {
 }
 
 // OutputJSON writes data as indented JSON to stdout if JSONOutput is true.
-// Returns true if output was written, false if JSON mode is not active.
-// If encoding fails, a fallback error envelope is written to stdout and the
-// encoding error is returned alongside true (output was still written).
+// Returns (false, nil) when JSON mode is not active. The boolean means "a
+// document reached the writer": data is encoded before the writer is
+// touched, and
+//   - if encoding fails, a fallback error envelope
+//     {"error": true, "message": "failed to encode JSON: …"} is written
+//     instead and the encoding error is returned alongside true;
+//   - if the write itself fails (closed pipe, full disk, a failing Stdout
+//     seam), nothing reached the writer: no fallback is attempted and
+//     (false, "write JSON output: …") is returned.
+//
 // Output goes to Stdout when set, otherwise to os.Stdout.
 func OutputJSON(data any) (bool, error) {
 	if !JSONOutput {
 		return false, nil
 	}
 	w := stdout()
-	enc := json.NewEncoder(w)
+	// Encode first so an encoding failure and a write failure are told apart:
+	// the bytes below are exactly what an indented Encoder would emit
+	// (two-space indent, trailing newline).
+	var document bytes.Buffer
+	enc := json.NewEncoder(&document)
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(data); err != nil {
 		// Write a fallback error envelope so the "JSON was written" contract holds.
@@ -62,6 +74,9 @@ func OutputJSON(data any) (bool, error) {
 			"message": fmt.Sprintf("failed to encode JSON: %v", err),
 		})
 		return true, err
+	}
+	if _, err := w.Write(document.Bytes()); err != nil {
+		return false, fmt.Errorf("write JSON output: %w", err)
 	}
 	return true, nil
 }
