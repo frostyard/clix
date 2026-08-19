@@ -44,16 +44,23 @@ PR template ──► review rubric ──► CI gates ──► corrections ─
     (`govulncheck ./...` with `golang.org/x/vuln/cmd/govulncheck@v1.6.0`
     pinned — fails on a reachable vulnerability anywhere in the module
     graph, including indirect modules Dependabot never proposes), *Unit Tests*
-    (`go test -v ./...`, which includes
-    the [e2e suite](../../tests/e2e/README.md)), *Race Detection*
-    (`go test -race -short ./...`), *Verify* (`go mod tidy` drift, `go vet`,
-    `gofmt`) — `make check` (fmt → lint → test) reproduces the local subset.
+    (`go test -v -coverprofile=coverage.out -covermode=atomic
+    -coverpkg=github.com/frostyard/clix ./...`, which includes
+    the [e2e suite](../../tests/e2e/README.md), then `make
+    test-coverage-check` and `make coverage-check` — the 95.0% total
+    statement-coverage floor on the `clix` package measured across every
+    test package, `scripts/check-coverage.sh`, ported from updex), *Race Detection*
+    (`go test -race ./...`), *Verify* (`go mod tidy` drift, `go vet`,
+    `gofmt`) — `make check` (fmt → lint → test → test-coverage-check →
+    coverage-check) reproduces the local subset.
   - *Docs integrity* (`docs-gate`): `node scripts/check-docs.mjs` checks
     docs-index coverage, relative-link integrity, and symlink resolution
     against [.coverage-thresholds.json](../../.coverage-thresholds.json) —
     all 1.0, `never_relax: true` (the loop may tighten, never loosen).
-  - There is no statement-coverage floor and no coverage service today;
-    `make test-cover` produces a local `coverage.html` for inspection.
+  - The statement-coverage floor is 95.0% (`COVERAGE_MIN` and the script's
+    default; `make coverage-check` after `make test`); there is no coverage
+    service, and `make test-cover` still produces a local `coverage.html` for
+    inspection. The floor may tighten, never loosen.
 - **Learn** — corrections land in
   [.memory/corrections.jsonl](../../.memory/README.md) (append-only,
   five-field schema) and are promoted into `AGENTS.md`, docs, or skills;
