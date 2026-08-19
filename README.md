@@ -17,6 +17,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/frostyard/clix"
 	"github.com/spf13/cobra"
@@ -60,10 +61,15 @@ func main() {
 	}
 
 	if err := app.Run(rootCmd); err != nil {
-		clix.OutputJSONError("command failed", err)
+		os.Exit(1)
 	}
 }
 ```
+
+When a command fails, fang renders the error to stderr and `App.Run` returns
+it, so the caller owns the process exit code — `os.Exit(1)` here is what makes
+`mytool` exit non-zero (call `clix.OutputJSONError` inside a command's `RunE`
+to emit the JSON error envelope under `--json`).
 
 Build with ldflags for version injection:
 
@@ -108,7 +114,6 @@ and consumers that already swap `os.Stdout` in tests keep working. `Stdout` /
 `Stderr` are shared package-level variables, so tests that set them should not
 run in parallel unless they coordinate access. In tests, assign a
 `bytes.Buffer` instead of touching the process globals:
-assign a `bytes.Buffer` instead of touching the process globals:
 
 ```go
 func TestStatusJSON(t *testing.T) {
