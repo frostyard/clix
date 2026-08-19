@@ -42,7 +42,7 @@ PR template ──► review rubric ──► CI gates ──► corrections ─
     `GOLANGCI_LINT_VERSION` in the `Makefile` — the single place to bump it;
     `make lint` warns when the local binary differs — configured by
     `.golangci.yml`, the same file `make lint` reads), *Security Scan*
-    (`govulncheck ./...` with `golang.org/x/vuln/cmd/govulncheck@v1.6.0`
+    (`govulncheck ./...` with `golang.org/x/vuln/cmd/govulncheck@v1.7.0`
     pinned — fails on a reachable vulnerability anywhere in the module
     graph, including indirect modules Dependabot never proposes), *Unit Tests*
     (`go test -v -coverprofile=coverage.out -covermode=atomic

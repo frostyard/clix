@@ -158,7 +158,7 @@ GitHub Actions CI (`.github/workflows/ci.yml`) runs on pushes to `main`, all PRs
 | Job | Purpose |
 |---|---|
 | **lint** | `golangci-lint` via `golangci-lint-action@v9`, installing the release pinned as `GOLANGCI_LINT_VERSION` in the `Makefile` (read by a `sed` step; bump it in a dedicated commit), configured by `.golangci.yml` (the same file `make lint` reads) |
-| **security** | `govulncheck ./...` with `golang.org/x/vuln/cmd/govulncheck@v1.6.0` pinned (job-level `permissions: contents: read`, 15-minute timeout) — fails on a reachable vulnerability in the module graph |
+| **security** | `govulncheck ./...` with `golang.org/x/vuln/cmd/govulncheck@v1.7.0` pinned (job-level `permissions: contents: read`, 15-minute timeout) — fails on a reachable vulnerability in the module graph |
 | **test** | `go test -v -coverprofile=coverage.out -covermode=atomic -coverpkg=github.com/frostyard/clix ./...` — unit tests plus the `tests/e2e/` suite, then `make test-coverage-check` and `make coverage-check` (95.0% statement-coverage floor on the `clix` package) |
 | **race** | `go test -race ./...` — the whole suite under the race detector; `concurrency_test.go` supplies the concurrent workload that gives the job something to detect |
 | **verify** | `go mod tidy` drift check, `go vet`, `gofmt` formatting check |
