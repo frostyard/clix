@@ -79,7 +79,7 @@ Run `make check` before opening a pull request; CI additionally checks
 
 Single flat package `clix` with four source files:
 
-- **clix.go** — `App` struct with `Run()` and `VersionString()`. Wires up fang.Execute with version string and signal handling; `Run()` returns an error (never panics) if the root command already defines one of clix's reserved flags (`--json`, `--verbose`/`-v`, `--dry-run`/`-n`, `--silent`/`-s`).
+- **clix.go** — `App` struct with `Run()` and `VersionString()`. Wires up fang.Execute with version string and signal handling; `Run()` returns an error (never panics) if the root command or any subcommand (any depth) already defines one of clix's reserved flags (`--json`, `--verbose`/`-v`, `--dry-run`/`-n`, `--silent`/`-s`).
 - **flags.go** — Package-level flag variables (`JSONOutput`, `Verbose`, `DryRun`, `Silent`), registration on cobra commands, and optional `BindViper()`.
 - **output.go** — `OutputJSON()` and `OutputJSONError()` helpers for standardized JSON output to stdout, plus the `Stdout`/`Stderr` writer seams (nil = current `os.Stdout`/`os.Stderr`) that every output path resolves through.
 - **reporter.go** — `NewReporter()` factory that returns NoopReporter (`--silent`), TextReporter, or JSONReporter (`--json`) based on flags. Silent takes priority over JSON.

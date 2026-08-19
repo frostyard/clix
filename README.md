@@ -90,7 +90,7 @@ go build -ldflags "-X main.version=1.0.0 -X main.commit=$(git rev-parse HEAD) -X
 
 Flag values are available as package-level variables: `clix.JSONOutput`, `clix.Verbose`, `clix.DryRun`, `clix.Silent`.
 
-These four flags — `--json`, `--verbose`/`-v`, `--dry-run`/`-n`, and `--silent`/`-s` — are reserved by clix on the root command: if your root command already defines one of those names or shorthands (persistent or local), `App.Run()` returns an error naming the collision instead of panicking, before anything executes.
+These four flags — `--json`, `--verbose`/`-v`, `--dry-run`/`-n`, and `--silent`/`-s` — are reserved by clix across the whole command tree: if your root command *or any subcommand at any depth* already defines one of those names or shorthands (persistent or local), `App.Run()` returns an error naming the command and the collision instead of panicking, before anything executes. (cobra merges each command's local flags with its ancestors' persistent flags at parse time, so a subcommand shorthand collision would otherwise panic only when that subcommand runs, and a name collision would silently shadow clix's flag.)
 
 ## Reporter
 
