@@ -292,6 +292,32 @@ func TestOutputJSON_WriteError(t *testing.T) {
 	}
 }
 
+func TestOutputJSON_EncodeErrorFallbackWriteError(t *testing.T) {
+	fw := &failingWriter{}
+	Stdout = fw
+	defer func() { Stdout = nil }()
+	JSONOutput = true
+	defer func() { JSONOutput = false }()
+
+	written, err := OutputJSON(make(chan int))
+	if written {
+		t.Error("OutputJSON() = true when the fallback write failed, want false")
+	}
+	var encodeErr *json.UnsupportedTypeError
+	if !errors.As(err, &encodeErr) {
+		t.Errorf("OutputJSON() error = %v, want original unsupported-type error", err)
+	}
+	if !errors.Is(err, errBrokenPipe) {
+		t.Errorf("OutputJSON() error = %v, want fallback write error %v", err, errBrokenPipe)
+	}
+	if err == nil || !strings.Contains(err.Error(), "write JSON fallback envelope: broken pipe") {
+		t.Errorf("OutputJSON() error = %q, want fallback write context", err)
+	}
+	if fw.calls != 1 {
+		t.Errorf("writer saw %d Write calls, want exactly 1 fallback attempt", fw.calls)
+	}
+}
+
 func TestOutputJSONError_WriteError(t *testing.T) {
 	fw := &failingWriter{}
 	Stdout = fw
