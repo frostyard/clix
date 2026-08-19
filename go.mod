@@ -3,7 +3,7 @@ module github.com/frostyard/clix
 go 1.26.6
 
 require (
-	github.com/charmbracelet/fang v1.0.0
+	charm.land/fang/v2 v2.0.1
 	github.com/frostyard/std v0.2.2
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0

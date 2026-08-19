@@ -2,7 +2,7 @@
 
 CLI convenience module for Frostyard tools.
 
-Wraps [charmbracelet/fang](https://github.com/charmbracelet/fang) and [spf13/cobra](https://github.com/spf13/cobra) to provide standardized version strings, common flags, JSON output helpers, and a reporter factory. Consuming CLIs only need to define their own commands.
+Wraps [charm.land/fang/v2](https://pkg.go.dev/charm.land/fang/v2) and [spf13/cobra](https://github.com/spf13/cobra) to provide standardized version strings, common flags, JSON output helpers, and a reporter factory. Consuming CLIs only need to define their own commands.
 
 ## Install
 

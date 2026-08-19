@@ -1,5 +1,5 @@
 // Package clix provides CLI convenience functions for Frostyard tools,
-// wrapping charmbracelet/fang and spf13/cobra with standardized version
+// wrapping charm.land/fang/v2 and spf13/cobra with standardized version
 // injection, common flags, JSON output helpers, and reporter factory.
 package clix
 
@@ -9,7 +9,7 @@ import (
 	"os"
 	"syscall"
 
-	"github.com/charmbracelet/fang"
+	"charm.land/fang/v2"
 	"github.com/spf13/cobra"
 )
 
