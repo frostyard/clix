@@ -1,7 +1,7 @@
 # frostyard/clix
 
 `github.com/frostyard/clix` is a CLI convenience module for Frostyard tools.
-It wraps charmbracelet/fang and spf13/cobra with standardized version
+It wraps charm.land/fang/v2 and spf13/cobra with standardized version
 injection, common flags, JSON output helpers, and a reporter factory, so
 individual CLIs only define their own commands and business logic. Start at
 [docs/README.md](docs/README.md); read

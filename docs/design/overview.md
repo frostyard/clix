@@ -2,7 +2,7 @@
 
 ## Purpose
 
-`github.com/frostyard/clix` is a shared Go module that provides standardized CLI scaffolding for Frostyard command-line tools. It wraps `charmbracelet/fang` and `spf13/cobra` to give every tool consistent version strings, common flags (`--json`, `--verbose`, `--dry-run`, `--silent`), JSON output helpers, and a reporter factory — so individual CLIs only need to define their own commands and business logic.
+`github.com/frostyard/clix` is a shared Go module that provides standardized CLI scaffolding for Frostyard command-line tools. It wraps `charm.land/fang/v2` and `spf13/cobra` to give every tool consistent version strings, common flags (`--json`, `--verbose`, `--dry-run`, `--silent`), JSON output helpers, and a reporter factory — so individual CLIs only need to define their own commands and business logic.
 
 ## Architecture
 
@@ -25,7 +25,7 @@ There are no subpackages or internal directories apart from the end-to-end suite
 
 | Direct dependency | Role |
 |---|---|
-| `charmbracelet/fang` v1.0.0 | Command execution with version injection and signal handling |
+| `charm.land/fang/v2` v2.0.1 | Command execution with version injection and signal handling |
 | `spf13/cobra` v1.10.2 | Command tree and flag parsing |
 | `spf13/viper` v1.21.0 | Optional config binding via `BindViper()` |
 | `frostyard/std` v0.2.0 (`reporter` subpackage) | `Reporter` interface and concrete implementations (`TextReporter`, `JSONReporter`, `NoopReporter`) |
