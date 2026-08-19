@@ -23,7 +23,12 @@ Apply the machine-readable controls in
      switches to structured stdout, default is text on stderr; data stays on
      stdout.
    - **Test isolation** — fresh `cobra.Command` per test; package-level flag
-     variables reset with `defer`; stdout captured via `os.Pipe()`.
+     variables reset with `defer`; output captured by assigning a
+     `bytes.Buffer` to `clix.Stdout` / `clix.Stderr` with a `defer` reset to
+     nil — never by swapping `os.Stdout` (process-wide, unsafe under
+     `t.Parallel` / `-race`). The `os.Pipe` tests in `output_test.go` stay
+     only as the compatibility proof that the nil default still honors a
+     swapped `os.Stdout`; they are not the pattern for new tests.
    - **Go 1.26 idioms** — range-over-int, `omitzero`, `any`, `slices`/`maps`.
 2. Apply every row of the
    [PR review rubric](../../docs/specs/pr-review-rubric.md)
