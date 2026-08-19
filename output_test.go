@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -256,5 +257,61 @@ func TestStdoutSeam_NilFallsBackToOSStdout(t *testing.T) {
 	Stderr = nil
 	if got := stderr(); got != os.Stderr {
 		t.Errorf("stderr() with Stderr=nil = %v, want os.Stderr", got)
+	}
+}
+
+// failingWriter fails every Write and counts the attempts.
+type failingWriter struct{ calls int }
+
+func (f *failingWriter) Write([]byte) (int, error) {
+	f.calls++
+	return 0, errors.New("broken pipe")
+}
+
+// TestOutputJSON_WriteError pins the write-failure contract: a writer that
+// fails is reported as not written, the error names the write (not the
+// encoder), and no fallback envelope is attempted on the broken writer.
+func TestOutputJSON_WriteError(t *testing.T) {
+	fw := &failingWriter{}
+	Stdout = fw
+	defer func() { Stdout = nil }()
+	JSONOutput = true
+	defer func() { JSONOutput = false }()
+
+	ok, err := OutputJSON(map[string]int{"a": 1})
+	if ok {
+		t.Error("OutputJSON() = true on a failed write, want false (nothing reached the writer)")
+	}
+	if err == nil || !strings.HasPrefix(err.Error(), "write JSON output: ") {
+		t.Fatalf("OutputJSON() error = %v, want it to start with %q", err, "write JSON output: ")
+	}
+	if fw.calls != 1 {
+		t.Errorf("writer saw %d Write calls, want exactly 1 (no fallback envelope on a broken writer)", fw.calls)
+	}
+}
+
+// TestOutputJSON_SuccessBytesUnchanged pins that consumers see exactly the
+// bytes an indented json.Encoder produced before: two-space indent and a
+// trailing newline.
+func TestOutputJSON_SuccessBytesUnchanged(t *testing.T) {
+	var out bytes.Buffer
+	Stdout = &out
+	defer func() { Stdout = nil }()
+	JSONOutput = true
+	defer func() { JSONOutput = false }()
+
+	value := map[string]any{"name": "x", "list": []int{1, 2}, "nested": map[string]bool{"ok": true}}
+	ok, err := OutputJSON(value)
+	if !ok || err != nil {
+		t.Fatalf("OutputJSON() = (%v, %v), want (true, nil)", ok, err)
+	}
+	var want bytes.Buffer
+	enc := json.NewEncoder(&want)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(value); err != nil {
+		t.Fatal(err)
+	}
+	if out.String() != want.String() {
+		t.Errorf("OutputJSON() bytes changed:\ngot:  %q\nwant: %q", out.String(), want.String())
 	}
 }

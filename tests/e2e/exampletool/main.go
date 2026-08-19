@@ -53,8 +53,14 @@ func main() {
 				"verbose":  clix.Verbose,
 				"dry_run":  clix.DryRun,
 			}
-			if written, err := clix.OutputJSON(result); written {
+			// README's pattern: an error (encode or write) is reported, a
+			// written document ends the command, otherwise text follows.
+			written, err := clix.OutputJSON(result)
+			if err != nil {
 				return err
+			}
+			if written {
+				return nil
 			}
 			fmt.Printf("hello %s\n", name)
 			return nil
