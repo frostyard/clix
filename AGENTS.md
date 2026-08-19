@@ -93,7 +93,9 @@ codes ([tests/e2e/README.md](tests/e2e/README.md)).
 ## Conventions
 
 - Go 1.26; use modern Go syntax (range-over-int, omitzero, etc.)
-- One test file per source file, standard `testing` package only
+- One test file per source file, standard `testing` package only; the one
+  cross-cutting exception is `concurrency_test.go`, which drives the output
+  paths from several goroutines so the `race` CI job has a real workload
 - Tests use fresh `cobra.Command` per test to avoid flag state leakage
 - Tests capture output via `bytes.Buffer` assigned to `clix.Stdout` / `clix.Stderr` (with `defer` reset to nil), never by swapping `os.Stdout`; JSON tests unmarshal and validate fields. The `os.Pipe` tests in `output_test.go` stay as the compatibility proof that the nil default still honors a swapped `os.Stdout`.
 - clix is a library every Frostyard CLI depends on: exported identifiers
