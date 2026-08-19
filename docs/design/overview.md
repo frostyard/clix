@@ -28,7 +28,7 @@ There are no subpackages or internal directories apart from the end-to-end suite
 | `charm.land/fang/v2` v2.0.1 | Command execution with version injection and signal handling |
 | `spf13/cobra` v1.10.2 | Command tree and flag parsing |
 | `spf13/viper` v1.21.0 | Optional config binding via `BindViper()` |
-| `frostyard/std` v0.2.0 (`reporter` subpackage) | `Reporter` interface and concrete implementations (`TextReporter`, `JSONReporter`, `NoopReporter`) |
+| `frostyard/std` v0.2.2 (`reporter` subpackage) | `Reporter` interface and concrete implementations (`TextReporter`, `JSONReporter`, `NoopReporter`) |
 
 ### Data Flow
 
@@ -147,7 +147,7 @@ go build -ldflags "-X main.version=1.0.0 -X main.commit=$(git rev-parse HEAD) -X
 
 ## CI
 
-GitHub Actions CI (`.github/workflows/ci.yml`) runs on pushes to `main` and all PRs targeting `main`. Five independent jobs:
+GitHub Actions CI (`.github/workflows/ci.yml`) runs on pushes to `main` and all PRs targeting `main`. Six independent jobs:
 
 | Job | Purpose |
 |---|---|
