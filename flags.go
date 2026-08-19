@@ -35,16 +35,15 @@ func commonFlags() []commonFlag {
 
 // registerFlags adds --json, --verbose, --dry-run, and --silent as persistent
 // flags on cmd. It returns an error instead of letting pflag panic when the
-// consumer's root command already defines one of those names or shorthands,
-// on either its persistent or its local flag set (cobra merges both at parse
-// time, so a local collision would still panic).
+// consumer's root command, or any subcommand at any depth, already defines
+// one of those names or shorthands on either its persistent or its local
+// flag set. cobra merges a command's local flags with every ancestor's
+// persistent flags at parse time: a colliding shorthand panics in pflag when
+// that command runs, and a colliding name silently shadows clix's flag so
+// the package-level variable is never set for that command.
 func registerFlags(cmd *cobra.Command) error {
-	for _, f := range commonFlags() {
-		for _, persistent := range []bool{true, false} {
-			if err := checkReserved(cmd, persistent, f); err != nil {
-				return err
-			}
-		}
+	if err := checkCommandTree(cmd, cmd); err != nil {
+		return err
 	}
 	for _, f := range commonFlags() {
 		if f.shorthand == "" {
@@ -56,21 +55,45 @@ func registerFlags(cmd *cobra.Command) error {
 	return nil
 }
 
+// checkCommandTree checks cmd and every descendant, depth first, against the
+// reserved flags. root identifies the command whose collisions are reported
+// with the original "root command" wording.
+func checkCommandTree(root, cmd *cobra.Command) error {
+	for _, f := range commonFlags() {
+		for _, persistent := range []bool{true, false} {
+			if err := checkReserved(root, cmd, persistent, f); err != nil {
+				return err
+			}
+		}
+	}
+	for _, sub := range cmd.Commands() {
+		if err := checkCommandTree(root, sub); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // checkReserved reports a collision between f and a flag already defined on
-// cmd's persistent (persistent=true) or local flag set.
-func checkReserved(cmd *cobra.Command, persistent bool, f commonFlag) error {
+// cmd's persistent (persistent=true) or local flag set. The root command is
+// named "root command"; a subcommand is named by its command path.
+func checkReserved(root, cmd *cobra.Command, persistent bool, f commonFlag) error {
 	set := cmd.Flags()
 	if persistent {
 		set = cmd.PersistentFlags()
 	}
+	who := "root command"
+	if cmd != root {
+		who = fmt.Sprintf("command %q", cmd.CommandPath())
+	}
 	if set.Lookup(f.name) != nil {
-		return fmt.Errorf("clix: root command already defines flag --%s", f.name)
+		return fmt.Errorf("clix: %s already defines flag --%s", who, f.name)
 	}
 	if f.shorthand == "" {
 		return nil
 	}
 	if other := set.ShorthandLookup(f.shorthand); other != nil {
-		return fmt.Errorf("clix: root command already defines shorthand -%s (used by --%s)", f.shorthand, other.Name)
+		return fmt.Errorf("clix: %s already defines shorthand -%s (used by --%s)", who, f.shorthand, other.Name)
 	}
 	return nil
 }
