@@ -1,6 +1,7 @@
 package clix
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -63,6 +64,56 @@ func TestBindViper(t *testing.T) {
 		}
 		if !viper.GetBool(name) {
 			t.Errorf("viper key %q not bound to --%s: GetBool = false after flag set", name, name)
+		}
+	}
+}
+
+// TestBindViper_FromSubcommandPreRun pins the wiring README.md documents:
+// clix.BindViper installed as the root's PersistentPreRunE, which cobra runs
+// with cmd set to the *executing* subcommand. The clix flags live on the
+// root's persistent set and reach the subcommand only as inherited flags, so
+// BindViper must resolve through the executing command's local, persistent,
+// and inherited sets rather than cmd.PersistentFlags() alone.
+func TestBindViper_FromSubcommandPreRun(t *testing.T) {
+	viper.Reset()
+	t.Cleanup(viper.Reset)
+	t.Cleanup(func() { JSONOutput, Verbose, DryRun, Silent = false, false, false, false })
+
+	ran := false
+	root := &cobra.Command{Use: "probe"}
+	root.PersistentPreRunE = func(cmd *cobra.Command, _ []string) error { return BindViper(cmd) }
+	sub := &cobra.Command{Use: "sub", RunE: func(*cobra.Command, []string) error { ran = true; return nil }}
+	root.AddCommand(sub)
+	if err := registerFlags(root); err != nil {
+		t.Fatalf("registerFlags() error = %v", err)
+	}
+	root.SetArgs([]string{"sub", "--json"})
+
+	if err := root.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+	if !ran {
+		t.Fatal("subcommand RunE did not run")
+	}
+	if !viper.GetBool("json") {
+		t.Error(`viper.GetBool("json") = false after "sub --json"; BindViper did not bind the inherited flag`)
+	}
+}
+
+// TestBindViper_UnregisteredFlagError pins the clix-namespaced error for a
+// command tree App.Run has not registered the flags on.
+func TestBindViper_UnregisteredFlagError(t *testing.T) {
+	viper.Reset()
+	t.Cleanup(viper.Reset)
+
+	cmd := &cobra.Command{Use: "bare"}
+	err := BindViper(cmd)
+	if err == nil {
+		t.Fatal("BindViper() = nil error, want an error naming the missing flag")
+	}
+	for _, want := range []string{"clix: BindViper", "--json", `"bare"`, "App.Run"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("BindViper() error = %q, want it to contain %q", err, want)
 		}
 	}
 }

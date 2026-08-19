@@ -76,7 +76,7 @@ Four package-level boolean variables are populated by cobra flag parsing:
 
 **`registerFlags(cmd)`** (unexported) adds these as persistent flags on the root command. Called automatically by `App.Run()`. The four names and three shorthands (`--json`, `--verbose`/`-v`, `--dry-run`/`-n`, `--silent`/`-s`) are reserved: before registering, it checks the root command's persistent *and* local flag sets (cobra merges them at parse time) and returns `clix: root command already defines flag --<name>` / `... shorthand -<c> (used by --<other>)` when a consumer flag collides, so `App.Run()` returns that error instead of pflag panicking on redefinition.
 
-**`BindViper(cmd)`** binds all four flags to viper keys (`json`, `verbose`, `dry-run`, `silent`). Optional — call in `PersistentPreRunE` if the consuming CLI uses viper for config.
+**`BindViper(cmd)`** binds all four flags to viper keys (`json`, `verbose`, `dry-run`, `silent`). Optional — call in `PersistentPreRunE` if the consuming CLI uses viper for config. It resolves each flag through the unexported `lookupFlag(cmd, name)`: `cmd.Flags()` (holds merged persistent flags once parsing has run), then `cmd.PersistentFlags()`, then `cmd.InheritedFlags()` — so it works when cobra invokes the root's `PersistentPreRunE` with `cmd` set to an executing subcommand, whose only view of the clix flags is inherited (pinned by `TestBindViper_FromSubcommandPreRun`). A flag that resolves nowhere returns `clix: BindViper: --<name> is not registered on "<cmd>"; call App.Run on the root command first` instead of viper's bare `flag for "json" is nil` (pinned by `TestBindViper_UnregisteredFlagError`).
 
 ### output.go — JSON Output Helpers
 

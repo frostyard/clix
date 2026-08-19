@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
 
@@ -75,13 +76,37 @@ func checkReserved(cmd *cobra.Command, persistent bool, f commonFlag) error {
 	return nil
 }
 
-// BindViper binds the common flags (--json, --verbose, --dry-run, --silent) to viper.
-// Call this in a PersistentPreRunE if your app uses viper for config management.
+// BindViper binds the common flags (--json, --verbose, --dry-run, --silent) to
+// viper keys of the same names. Call it from a PersistentPreRunE if your app
+// uses viper for config management. cobra runs the root's PersistentPreRunE
+// with cmd set to the command actually executing, so BindViper resolves each
+// flag through that command's local, persistent, and inherited flag sets — it
+// is safe to call from any command in the tree, root or subcommand. It returns
+// a clix-namespaced error when a flag is not registered on cmd, which means
+// App.Run has not registered the flags on the root command yet.
 func BindViper(cmd *cobra.Command) error {
 	for _, name := range []string{"json", "verbose", "dry-run", "silent"} {
-		if err := viper.BindPFlag(name, cmd.PersistentFlags().Lookup(name)); err != nil {
+		flag := lookupFlag(cmd, name)
+		if flag == nil {
+			return fmt.Errorf("clix: BindViper: --%s is not registered on %q; call App.Run on the root command first", name, cmd.Name())
+		}
+		if err := viper.BindPFlag(name, flag); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// lookupFlag resolves name on cmd the way cobra will at parse time: the
+// command's own flag set (which holds merged persistent flags once parsing
+// has run), then its persistent set (before parsing), then the flags it
+// inherits from its ancestors (a subcommand seeing the root's clix flags).
+func lookupFlag(cmd *cobra.Command, name string) *pflag.Flag {
+	if flag := cmd.Flags().Lookup(name); flag != nil {
+		return flag
+	}
+	if flag := cmd.PersistentFlags().Lookup(name); flag != nil {
+		return flag
+	}
+	return cmd.InheritedFlags().Lookup(name)
 }
