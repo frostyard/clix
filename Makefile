@@ -15,7 +15,7 @@ all: fmt lint test
 fmt:
 	$(GOFMT) -w $(GOFILES)
 
-## lint: Run linter (skips if not installed; warns if the installed version differs from GOLANGCI_LINT_VERSION)
+## lint: Run linter (fails if not installed; warns if the installed version differs from GOLANGCI_LINT_VERSION)
 lint:
 	@if command -v golangci-lint >/dev/null 2>&1; then \
 		installed="$$(golangci-lint version --short 2>/dev/null)"; \
@@ -25,7 +25,9 @@ lint:
 		echo "golangci-lint run"; \
 		golangci-lint run; \
 	else \
-		echo "golangci-lint not installed, skipping"; \
+		echo "golangci-lint $(GOLANGCI_LINT_VERSION) is required for make lint (not installed)"; \
+		echo "install with: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v$(GOLANGCI_LINT_VERSION)"; \
+		exit 1; \
 	fi
 
 ## test: Run tests (writes coverage.out for the clix package across every test package)
