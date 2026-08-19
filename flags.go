@@ -109,11 +109,24 @@ func checkReserved(root, cmd *cobra.Command, persistent bool, f commonFlag) erro
 // App.Run has not registered the flags on the root command yet.
 func BindViper(cmd *cobra.Command) error {
 	for _, name := range []string{"json", "verbose", "dry-run", "silent"} {
-		flag := lookupFlag(cmd, name)
+		set, flag := lookupFlag(cmd, name)
 		if flag == nil {
 			return fmt.Errorf("clix: BindViper: --%s is not registered on %q; call App.Run on the root command first", name, cmd.Name())
 		}
 		if err := viper.BindPFlag(name, flag); err != nil {
+			return err
+		}
+		// Binding alone leaves a config-file or environment value inside
+		// viper. clix and its consumers read the package-level variables
+		// (JSONOutput, Verbose, DryRun, Silent), which are the flags'
+		// targets, so without this write-back a `json: true` config would
+		// change nothing. Precedence is command line > viper > default: an
+		// explicit flag has Changed set, and is never overwritten — so
+		// `--json=false` against `json: true` in config stays false.
+		if flag.Changed || !viper.GetBool(name) {
+			continue
+		}
+		if err := set.Set(name, "true"); err != nil {
 			return err
 		}
 	}
@@ -124,12 +137,20 @@ func BindViper(cmd *cobra.Command) error {
 // command's own flag set (which holds merged persistent flags once parsing
 // has run), then its persistent set (before parsing), then the flags it
 // inherits from its ancestors (a subcommand seeing the root's clix flags).
-func lookupFlag(cmd *cobra.Command, name string) *pflag.Flag {
+// It returns the owning set alongside the flag, because writing a viper
+// value back goes through the set — FlagSet.Set records that the value was
+// set, where assigning the flag's Value alone would not. Every set here
+// holds the same *pflag.Flag pointer, so the write reaches the same target
+// variable whichever one resolved it.
+func lookupFlag(cmd *cobra.Command, name string) (*pflag.FlagSet, *pflag.Flag) {
 	if flag := cmd.Flags().Lookup(name); flag != nil {
-		return flag
+		return cmd.Flags(), flag
 	}
 	if flag := cmd.PersistentFlags().Lookup(name); flag != nil {
-		return flag
+		return cmd.PersistentFlags(), flag
 	}
-	return cmd.InheritedFlags().Lookup(name)
+	if flag := cmd.InheritedFlags().Lookup(name); flag != nil {
+		return cmd.InheritedFlags(), flag
+	}
+	return nil, nil
 }

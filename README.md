@@ -151,6 +151,10 @@ rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 
 This binds `--json`, `--verbose`, `--dry-run`, and `--silent` to viper keys so they can be set via config files or environment variables. cobra runs the root's `PersistentPreRunE` with `cmd` set to the command actually executing, and `BindViper` resolves the flags through that command's local, persistent, and inherited sets, so this one hook works for the root and every subcommand. Calling it before `App.Run` has registered the flags returns `clix: BindViper: --json is not registered on "<cmd>"; call App.Run on the root command first`.
 
+`BindViper` also writes a viper-sourced value back onto the flag, so a config file or environment variable actually changes `clix.JSONOutput`, `clix.Verbose`, `clix.DryRun`, and `clix.Silent` — binding alone would leave the value inside viper, where nothing clix reads would see it.
+
+Precedence is **command line > viper > default**. A flag the user passed is never overwritten, so an explicit `--json=false` wins over `json: true` in a config file. Call `BindViper` from `PersistentPreRunE` (not `RunE`) so the write-back happens before your `RunE` reads those variables.
+
 ## Development
 
 ```bash

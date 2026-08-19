@@ -138,6 +138,12 @@ The reporter factory and output helpers follow a consistent priority: `--silent`
 
 Call `clix.BindViper(cmd)` in a `PersistentPreRunE` to bind the four flags to viper keys. This allows them to be set via config files or environment variables through viper's standard mechanisms.
 
+Binding is not enough on its own: viper would hold the value while `JSONOutput`, `Verbose`, `DryRun`, and `Silent` — the variables clix and its consumers actually read — stayed at their defaults. So after binding each flag, `BindViper` writes a viper-sourced `true` back through the owning flag set (`FlagSet.Set`, which records that the value was set, unlike assigning the flag's `Value` directly).
+
+Precedence is **command line > viper > default**. The write-back is skipped when `flag.Changed` is set, so a flag the user typed is never overwritten — an explicit `--json=false` beats `json: true` in a config file, and beats a `viper.Set` override too. (`viper.BindPFlag` already ranks a changed flag above the config layer; the `Changed` guard is what also keeps viper's explicit override layer from winning.)
+
+It must be called from `PersistentPreRunE` rather than `RunE`, so the write-back happens before `RunE` reads those variables.
+
 ### Build variables
 
 Set via ldflags in the consuming CLI's build:
