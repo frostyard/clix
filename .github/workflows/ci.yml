@@ -91,7 +91,7 @@ jobs:
         run: go mod download
 
       - name: Run tests with race detector
-        run: go test -race -short ./...
+        run: go test -race ./...
 
   verify:
     name: Verify
