@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // Docs-integrity gate: index coverage, relative-link integrity, symlink
-// resolution — thresholds in .coverage-thresholds.json (ADR-0001; the
-// never_relax guardrail may tighten, never loosen). Zero dependencies;
-// Node >= 20. Ported from frostyard/core (its ADR-0029).
+// resolution, and the documented CI job inventory — thresholds in
+// .coverage-thresholds.json (ADR-0001; the never_relax guardrail may tighten,
+// never loosen). Zero dependencies; Node >= 20. Ported from frostyard/core
+// (its ADR-0029).
 import { readFileSync, readdirSync, lstatSync, existsSync, realpathSync } from "node:fs";
 import { join, dirname, resolve, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -92,6 +93,21 @@ for (const heading of ["## Definition", "## Rules"]) {
   if (!metric.split("\n").includes(heading)) {
     failures.push(`pin: docs/specs/pr-acceptance-metric.md is missing the "${heading}" heading`);
   }
+}
+
+// ---- 5. CI inventory: overview names every workflow job, and only those jobs. ----
+const workflow = readFileSync(join(root, ".github/workflows/ci.yml"), "utf8");
+const jobsSection = workflow.slice(workflow.indexOf("\njobs:\n") + "\njobs:\n".length);
+const workflowJobs = [...jobsSection.matchAll(/^  ([a-z][a-z0-9-]*):\s*$/gm)].map((match) => match[1]).sort();
+const overview = readFileSync(join(root, "docs/design/overview.md"), "utf8");
+const ciStart = overview.indexOf("\n## CI\n");
+const ciEnd = overview.indexOf("\n## ", ciStart + "\n## CI\n".length);
+const ciSection = overview.slice(ciStart, ciEnd === -1 ? undefined : ciEnd);
+const documentedJobs = [...ciSection.matchAll(/^\| \*\*([a-z][a-z0-9-]*)\*\* \|/gm)].map((match) => match[1]).sort();
+if (workflowJobs.join("\n") !== documentedJobs.join("\n")) {
+  failures.push(
+    `ci inventory: docs/design/overview.md lists [${documentedJobs.join(", ")}], workflow defines [${workflowJobs.join(", ")}]`,
+  );
 }
 
 // ---- Report against thresholds. ----
