@@ -45,7 +45,11 @@ PR template ──► review rubric ──► CI gates ──► corrections ─
     pinned — fails on a reachable vulnerability anywhere in the module
     graph, including indirect modules Dependabot never proposes), *Unit Tests*
     (`go test -v ./...`, which includes
-    the [e2e suite](../../tests/e2e/README.md)), *Race Detection*
+    the [e2e suite](../../tests/e2e/README.md) and the README example check —
+    `readme_example_test.go` compiles README.md's `package main` block against
+    the checkout and resolves every `clix.<Ident>` in every Go block against
+    the package's exported names, so a renamed or removed exported symbol the
+    documentation uses fails this required check), *Race Detection*
     (`go test -race -short ./...`), *Verify* (`go mod tidy` drift, `go vet`,
     `gofmt`) — `make check` (fmt → lint → test) reproduces the local subset.
   - *Docs integrity* (`docs-gate`): `node scripts/check-docs.mjs` checks
