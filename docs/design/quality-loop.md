@@ -46,7 +46,7 @@ PR template ──► review rubric ──► CI gates ──► corrections ─
     graph, including indirect modules Dependabot never proposes), *Unit Tests*
     (`go test -v ./...`, which includes
     the [e2e suite](../../tests/e2e/README.md)), *Race Detection*
-    (`go test -race -short ./...`), *Verify* (`go mod tidy` drift, `go vet`,
+    (`go test -race ./...`), *Verify* (`go mod tidy` drift, `go vet`,
     `gofmt`) — `make check` (fmt → lint → test) reproduces the local subset.
   - *Docs integrity* (`docs-gate`): `node scripts/check-docs.mjs` checks
     docs-index coverage, relative-link integrity, and symlink resolution
