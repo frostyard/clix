@@ -153,7 +153,7 @@ go build -ldflags "-X main.version=1.0.0 -X main.commit=$(git rev-parse HEAD) -X
 
 ## CI
 
-GitHub Actions CI (`.github/workflows/ci.yml`) runs on pushes to `main` and all PRs targeting `main`. Seven independent jobs:
+GitHub Actions CI (`.github/workflows/ci.yml`) runs on pushes to `main`, all PRs targeting `main`, and merge-queue (`merge_group`) branches, so the required checks report on the queue's own temporary branches (core ADR-0042). Seven independent jobs:
 
 | Job | Purpose |
 |---|---|

@@ -5,6 +5,10 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # The merge queue runs the required checks on its own temporary branches
+  # under this event; without the trigger the required contexts never report
+  # there and every queue entry waits out the check timeout (core ADR-0042).
+  merge_group:
 
 jobs:
   lint:

@@ -36,7 +36,8 @@ PR template ──► review rubric ──► CI gates ──► corrections ─
   task-shaped form for agents. Maintainers remain accountable for the merge
   decision.
 - **Gate** — [.github/workflows/ci.yml](../../.github/workflows/ci.yml)
-  runs on every PR and push to `main`, one job per concern:
+  runs on every PR, every push to `main`, and every merge-queue
+  (`merge_group`) branch, one job per concern:
   - *Lint* (`golangci-lint-action`, installing the release pinned as
     `GOLANGCI_LINT_VERSION` in the `Makefile` — the single place to bump it;
     `make lint` warns when the local binary differs — configured by

@@ -191,7 +191,8 @@ checks, or claim verification passed without evidence from the pull request,
 and never merge, approve, or release your own work (`.claude/settings.json`
 denies these at the tool layer).
 
-CI runs on every pull request (`.github/workflows/ci.yml`) and must pass:
+CI runs on every pull request, on pushes to `main`, and on merge-queue
+(`merge_group`) branches (`.github/workflows/ci.yml`) and must pass:
 lint (the golangci-lint release pinned as `GOLANGCI_LINT_VERSION` in the
 `Makefile`, with `.golangci.yml`), security scan (`govulncheck ./...`,
 pinned at `golang.org/x/vuln/cmd/govulncheck@v1.6.0`, failing on any
