@@ -42,8 +42,8 @@ improvising, whichever agent you are:
 
 - **Go 1.26.6 or newer** (the module targets `go 1.26.6`)
 - `make`
-- Optional: [`golangci-lint`](https://golangci-lint.run/) (v2) for `make lint`
-  — `make lint` skips with a message when it is missing and warns when the
+- [`golangci-lint`](https://golangci-lint.run/) (v2) for `make lint`
+  — `make lint` fails with an installation hint when it is missing and warns when the
   installed release differs from `GOLANGCI_LINT_VERSION` in the `Makefile`; CI always runs exactly that pinned release with
   `.golangci.yml`, so install it with
   `go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v<version>`;
@@ -58,7 +58,7 @@ throwaway consumer program with `go build`).
 
 ```bash
 make test            # run all tests (unit tests + tests/e2e/); writes coverage.out for the clix package
-make lint            # run golangci-lint (.golangci.yml; skips if not installed,
+make lint            # run golangci-lint (.golangci.yml; fails if not installed,
                      # warns if not the GOLANGCI_LINT_VERSION pinned in the Makefile)
 make check           # fmt + lint + test + coverage floor (pre-commit gate)
 make coverage-check  # enforce the 95.0% statement-coverage floor on coverage.out (scripts/check-coverage.sh)
@@ -71,7 +71,7 @@ make bump            # tag next semver with svu and push (the tag push publishes
 make help            # list all targets
 go test -v -run TestName ./...  # run a single test
 go test -v ./tests/e2e/...      # end-to-end suite alone
-node scripts/check-docs.mjs     # docs-integrity gate (index, links, aliases)
+node scripts/check-docs.mjs     # docs-integrity gate (index, links, aliases, CI job inventory)
 ```
 
 Run `make check` before opening a pull request; CI additionally checks
@@ -146,7 +146,8 @@ review-required at high risk).
 **docs-integrity gate** `node scripts/check-docs.mjs` (the `docs-gate` CI
 job) fails on any unindexed doc in the four categories, any dead relative
 link in `AGENTS.md`/`README.md`/`docs/`/`.github/prompts/`/`.memory/`/
-`tests/e2e/`, or any broken/repo-escaping symlink; thresholds in
+`tests/e2e/`, any broken/repo-escaping symlink, or drift between the CI job
+inventory in `.github/workflows/ci.yml` and `docs/design/overview.md`; thresholds in
 `.coverage-thresholds.json` are all 1.0 with `never_relax: true`.
 
 **conformance aliases** Conformance alias symlinks are listed in

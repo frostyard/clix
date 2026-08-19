@@ -90,7 +90,7 @@ if written, err := clix.OutputJSON(result); written {
 // fall through to text output
 ```
 
-**`OutputJSONError(message string, err error) error`** — Builds a structured error envelope (`error: true`, `message`, `details`) and writes it via `OutputJSON`, then returns an error for the caller to propagate. If `err` is non-nil, `details` contains `err.Error()` and the returned error wraps it via `fmt.Errorf`; if `err` is nil, `details` falls back to `message` and a plain `errors.New` is returned. Any encoding error from `OutputJSON` is silently discarded (the caller's error takes priority).
+**`OutputJSONError(message string, err error) error`** — Builds a structured error envelope (`error: true`, `message`, `details`) and writes it via `OutputJSON`, then returns an error for the caller to propagate. If `err` is non-nil, `details` contains `err.Error()` and the returned error wraps it via `fmt.Errorf`; if `err` is nil, `details` falls back to `message` and a plain `errors.New` is returned. If writing the envelope fails, the returned error joins the caller-facing command error with the `OutputJSON` failure so `errors.Is` can discover both causes.
 
 ### reporter.go — Reporter Factory
 
@@ -153,7 +153,7 @@ go build -ldflags "-X main.version=1.0.0 -X main.commit=$(git rev-parse HEAD) -X
 
 ## CI
 
-GitHub Actions CI (`.github/workflows/ci.yml`) runs on pushes to `main` and all PRs targeting `main`. Six independent jobs:
+GitHub Actions CI (`.github/workflows/ci.yml`) runs on pushes to `main` and all PRs targeting `main`. Seven independent jobs:
 
 | Job | Purpose |
 |---|---|
@@ -162,11 +162,12 @@ GitHub Actions CI (`.github/workflows/ci.yml`) runs on pushes to `main` and all 
 | **test** | `go test -v -coverprofile=coverage.out -covermode=atomic -coverpkg=github.com/frostyard/clix ./...` — unit tests plus the `tests/e2e/` suite, then `make test-coverage-check` and `make coverage-check` (95.0% statement-coverage floor on the `clix` package) |
 | **race** | `go test -race ./...` — the whole suite under the race detector; `concurrency_test.go` supplies the concurrent workload that gives the job something to detect |
 | **verify** | `go mod tidy` drift check, `go vet`, `gofmt` formatting check |
-| **docs-gate** | `node scripts/check-docs.mjs` — docs-index coverage, relative-link integrity, symlink (alias) resolution against `.coverage-thresholds.json` |
+| **docs-gate** | `node scripts/check-docs.mjs` — docs-index coverage, relative-link integrity, symlink (alias) resolution, and CI job inventory agreement against `.coverage-thresholds.json` |
+| **release-config** | GoReleaser Pro `goreleaser check` validates `.goreleaser.yaml` before merge, using the `~> v2` release line |
 
 Each concern runs as a separate job for clear failure signals in the GitHub UI. The Makefile `check` target remains for local pre-commit use. No build job — this is a library with no binary artifacts. The whole declare → review → gate → learn → observe loop is described in [quality-loop.md](quality-loop.md).
 
-The Makefile lint target gracefully skips when `golangci-lint` is not installed (for local dev), warns when the installed release differs from `GOLANGCI_LINT_VERSION` (so a local run is not silently linted by a different version than CI), and properly fails on lint errors when the binary is present (for CI).
+The Makefile lint target fails with a pinned-version installation hint when `golangci-lint` is not installed, warns when the installed release differs from `GOLANGCI_LINT_VERSION` (so a local run is not silently linted by a different version than CI), and fails on lint errors when the binary is present.
 
 ## Release
 
@@ -176,7 +177,7 @@ The Makefile lint target gracefully skips when `golangci-lint` is not installed 
 
 ```bash
 make test            # run all tests
-make lint            # golangci-lint (skips if not installed)
+make lint            # golangci-lint (fails with an install hint if missing)
 make check           # fmt + lint + test (pre-commit gate)
 make test-cover      # tests with coverage report (coverage.html)
 make fmt             # format Go source files

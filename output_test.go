@@ -260,12 +260,14 @@ func TestStdoutSeam_NilFallsBackToOSStdout(t *testing.T) {
 	}
 }
 
+var errBrokenPipe = errors.New("broken pipe")
+
 // failingWriter fails every Write and counts the attempts.
 type failingWriter struct{ calls int }
 
 func (f *failingWriter) Write([]byte) (int, error) {
 	f.calls++
-	return 0, errors.New("broken pipe")
+	return 0, errBrokenPipe
 }
 
 // TestOutputJSON_WriteError pins the write-failure contract: a writer that
@@ -287,6 +289,30 @@ func TestOutputJSON_WriteError(t *testing.T) {
 	}
 	if fw.calls != 1 {
 		t.Errorf("writer saw %d Write calls, want exactly 1 (no fallback envelope on a broken writer)", fw.calls)
+	}
+}
+
+func TestOutputJSONError_WriteError(t *testing.T) {
+	fw := &failingWriter{}
+	Stdout = fw
+	defer func() { Stdout = nil }()
+	JSONOutput = true
+	defer func() { JSONOutput = false }()
+
+	commandErr := errors.New("timeout")
+	err := OutputJSONError("deploy failed", commandErr)
+	if !errors.Is(err, commandErr) {
+		t.Errorf("OutputJSONError() error = %v, want it to preserve command error %v", err, commandErr)
+	}
+	if !errors.Is(err, errBrokenPipe) {
+		t.Errorf("OutputJSONError() error = %v, want it to preserve write error %v", err, errBrokenPipe)
+	}
+	if !strings.Contains(err.Error(), "deploy failed: timeout") ||
+		!strings.Contains(err.Error(), "write JSON output: broken pipe") {
+		t.Errorf("OutputJSONError() error = %q, want command and write failure details", err)
+	}
+	if fw.calls != 1 {
+		t.Errorf("writer saw %d Write calls, want exactly 1", fw.calls)
 	}
 }
 
