@@ -1,4 +1,4 @@
-.PHONY: all clean fmt lint test test-cover coverage-check test-coverage-check tidy check bump help
+.PHONY: all clean fmt lint test test-cover coverage-check test-coverage-check release-check tidy check bump help
 
 # Go commands
 GO := go
@@ -44,6 +44,15 @@ test-coverage-check:
 test-cover:
 	$(GO) test -coverprofile=coverage.out ./...
 	$(GO) tool cover -html=coverage.out -o coverage.html
+
+## release-check: Validate .goreleaser.yaml (skips if goreleaser is not installed)
+release-check:
+	@if command -v goreleaser >/dev/null 2>&1; then \
+		echo "goreleaser check -f .goreleaser.yaml"; \
+		goreleaser check -f .goreleaser.yaml; \
+	else \
+		echo "goreleaser not installed, skipping"; \
+	fi
 
 ## tidy: Tidy go modules
 tidy:
