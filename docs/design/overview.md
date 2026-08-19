@@ -149,6 +149,7 @@ GitHub Actions CI (`.github/workflows/ci.yml`) runs on pushes to `main` and all 
 | Job | Purpose |
 |---|---|
 | **lint** | `golangci-lint` via `golangci-lint-action@v9`, installing the release pinned as `GOLANGCI_LINT_VERSION` in the `Makefile` (read by a `sed` step; bump it in a dedicated commit), configured by `.golangci.yml` (the same file `make lint` reads) |
+| **security** | `govulncheck ./...` with `golang.org/x/vuln/cmd/govulncheck@v1.6.0` pinned (job-level `permissions: contents: read`, 15-minute timeout) — fails on a reachable vulnerability in the module graph |
 | **test** | `go test -v ./...` — unit tests plus the `tests/e2e/` suite |
 | **race** | `go test -race -short ./...` |
 | **verify** | `go mod tidy` drift check, `go vet`, `gofmt` formatting check |

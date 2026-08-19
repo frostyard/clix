@@ -188,7 +188,9 @@ denies these at the tool layer).
 
 CI runs on every pull request (`.github/workflows/ci.yml`) and must pass:
 lint (the golangci-lint release pinned as `GOLANGCI_LINT_VERSION` in the
-`Makefile`, with `.golangci.yml`), unit tests (`go test -v ./...`,
+`Makefile`, with `.golangci.yml`), security scan (`govulncheck ./...`,
+pinned at `golang.org/x/vuln/cmd/govulncheck@v1.6.0`, failing on any
+reachable vulnerability in the module graph), unit tests (`go test -v ./...`,
 including `tests/e2e/`), race-detector tests, verification (`go mod tidy`
 cleanliness, `go vet`, `gofmt`), and docs integrity
 (`scripts/check-docs.mjs`). The whole loop — declare, review, gate, learn,
