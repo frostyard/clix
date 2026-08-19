@@ -72,8 +72,14 @@ jobs:
       - name: Download dependencies
         run: go mod download
 
-      - name: Run tests
-        run: go test -v ./...
+      - name: Run tests with coverage
+        run: go test -v -coverprofile=coverage.out -covermode=atomic -coverpkg=github.com/frostyard/clix ./...
+
+      - name: Self-test the coverage floor script
+        run: make test-coverage-check
+
+      - name: Enforce coverage floor
+        run: make coverage-check
 
   race:
     name: Race Detection

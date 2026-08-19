@@ -57,10 +57,12 @@ throwaway consumer program with `go build`).
 ## Commands
 
 ```bash
-make test            # run all tests (unit tests + tests/e2e/)
+make test            # run all tests (unit tests + tests/e2e/); writes coverage.out for the clix package
 make lint            # run golangci-lint (.golangci.yml; skips if not installed,
                      # warns if not the GOLANGCI_LINT_VERSION pinned in the Makefile)
-make check           # fmt + lint + test (pre-commit gate)
+make check           # fmt + lint + test + coverage floor (pre-commit gate)
+make coverage-check  # enforce the 95.0% statement-coverage floor on coverage.out (scripts/check-coverage.sh)
+make test-coverage-check   # self-test scripts/check-coverage.sh with fixture profiles
 make test-cover      # tests with coverage report (coverage.html)
 make fmt             # format Go source files
 make tidy            # go mod tidy
