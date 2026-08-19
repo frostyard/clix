@@ -84,6 +84,8 @@ go build -ldflags "-X main.version=1.0.0 -X main.commit=$(git rev-parse HEAD) -X
 
 Flag values are available as package-level variables: `clix.JSONOutput`, `clix.Verbose`, `clix.DryRun`, `clix.Silent`.
 
+These four flags — `--json`, `--verbose`/`-v`, `--dry-run`/`-n`, and `--silent`/`-s` — are reserved by clix on the root command: if your root command already defines one of those names or shorthands (persistent or local), `App.Run()` returns an error naming the collision instead of panicking, before anything executes.
+
 ## Reporter
 
 `clix.NewReporter()` returns a reporter based on the active flags:

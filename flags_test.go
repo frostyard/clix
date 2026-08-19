@@ -10,7 +10,9 @@ import (
 func TestRegisterFlags(t *testing.T) {
 	cmd := &cobra.Command{Use: "test"}
 
-	registerFlags(cmd)
+	if err := registerFlags(cmd); err != nil {
+		t.Fatalf("registerFlags() error = %v", err)
+	}
 
 	flags := []struct {
 		name      string
@@ -39,7 +41,9 @@ func TestBindViper(t *testing.T) {
 	t.Cleanup(viper.Reset)
 
 	cmd := &cobra.Command{Use: "test"}
-	registerFlags(cmd)
+	if err := registerFlags(cmd); err != nil {
+		t.Fatalf("registerFlags() error = %v", err)
+	}
 	// registerFlags binds the flags to the package-level variables; setting
 	// them below mutates that state, so restore it for the other tests.
 	t.Cleanup(func() { JSONOutput, Verbose, DryRun, Silent = false, false, false, false })

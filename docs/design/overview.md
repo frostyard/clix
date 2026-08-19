@@ -60,7 +60,7 @@ main() creates App{} with build-time metadata
 
 **`App.Run(cmd)`** is the main entry point:
 1. Fills zero-value fields with defaults
-2. Calls `registerFlags(cmd)` to add common persistent flags
+2. Calls `registerFlags(cmd)` to add common persistent flags; if that returns an error, `Run` returns it before executing anything
 3. Delegates to `fang.Execute()` with version string and `SIGINT`/`SIGTERM` signal handling
 
 ### flags.go — Common Flags
@@ -74,7 +74,7 @@ Four package-level boolean variables are populated by cobra flag parsing:
 | `DryRun` | `--dry-run` | `-n` | `false` | Dry run (no side effects) |
 | `Silent` | `--silent` | `-s` | `false` | Suppress all progress output |
 
-**`registerFlags(cmd)`** (unexported) adds these as persistent flags on the root command. Called automatically by `App.Run()`.
+**`registerFlags(cmd)`** (unexported) adds these as persistent flags on the root command. Called automatically by `App.Run()`. The four names and three shorthands (`--json`, `--verbose`/`-v`, `--dry-run`/`-n`, `--silent`/`-s`) are reserved: before registering, it checks the root command's persistent *and* local flag sets (cobra merges them at parse time) and returns `clix: root command already defines flag --<name>` / `... shorthand -<c> (used by --<other>)` when a consumer flag collides, so `App.Run()` returns that error instead of pflag panicking on redefinition.
 
 **`BindViper(cmd)`** binds all four flags to viper keys (`json`, `verbose`, `dry-run`, `silent`). Optional — call in `PersistentPreRunE` if the consuming CLI uses viper for config.
 
