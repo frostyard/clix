@@ -46,7 +46,11 @@ PR template ──► review rubric ──► CI gates ──► corrections ─
     graph, including indirect modules Dependabot never proposes), *Unit Tests*
     (`go test -v -coverprofile=coverage.out -covermode=atomic
     -coverpkg=github.com/frostyard/clix ./...`, which includes
-    the [e2e suite](../../tests/e2e/README.md), then `make
+    the [e2e suite](../../tests/e2e/README.md) and the README example check
+    (`readme_example_test.go` compiles README.md's `package main` block
+    against the checkout and resolves every `clix.<Ident>` in every Go block
+    against the package's exported names, so a renamed or removed exported
+    symbol the documentation uses fails this required check), then `make
     test-coverage-check` and `make coverage-check` — the 95.0% total
     statement-coverage floor on the `clix` package measured across every
     test package, `scripts/check-coverage.sh`, ported from updex), *Race Detection*
