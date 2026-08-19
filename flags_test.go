@@ -1,6 +1,9 @@
 package clix
 
 import (
+	"bytes"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -224,5 +227,151 @@ func TestBindViper_UnregisteredFlagError(t *testing.T) {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("BindViper() error = %q, want it to contain %q", err, want)
 		}
+	}
+}
+
+// restoreFlagState resets the package-level flag variables, clix.Stdout, and
+// viper so a viper-backed test cannot leak into its neighbours.
+func restoreFlagState(t *testing.T) {
+	t.Helper()
+	oldJSON, oldVerbose, oldDryRun, oldSilent, oldStdout := JSONOutput, Verbose, DryRun, Silent, Stdout
+	t.Cleanup(func() {
+		JSONOutput, Verbose, DryRun, Silent, Stdout = oldJSON, oldVerbose, oldDryRun, oldSilent, oldStdout
+		viper.Reset()
+	})
+	viper.Reset()
+	JSONOutput, Verbose, DryRun, Silent = false, false, false, false
+}
+
+// writeViperConfig writes body to a temp YAML file and loads it into viper.
+func writeViperConfig(t *testing.T, body string) {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+		t.Fatalf("writing config: %v", err)
+	}
+	viper.SetConfigFile(path)
+	if err := viper.ReadInConfig(); err != nil {
+		t.Fatalf("reading config: %v", err)
+	}
+}
+
+// TestBindViper_ViperValueReachesFlagGlobals is the point of BindViper's
+// write-back: README.md and docs/design/overview.md promise a config file can
+// turn on JSON output, and binding alone does not deliver that. viper holds
+// the value, but clix and its consumers read the package-level variable, so
+// without the write-back `json: true` changes nothing an app can observe.
+func TestBindViper_ViperValueReachesFlagGlobals(t *testing.T) {
+	restoreFlagState(t)
+	writeViperConfig(t, "json: true\n")
+
+	var out bytes.Buffer
+	Stdout = &out
+
+	var sawJSON bool
+	var written bool
+	root := &cobra.Command{
+		Use: "app",
+		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+			return BindViper(cmd)
+		},
+		RunE: func(_ *cobra.Command, _ []string) error {
+			sawJSON = JSONOutput
+			ok, err := OutputJSON(map[string]string{"hello": "world"})
+			written = ok
+			return err
+		},
+	}
+	if err := registerFlags(root); err != nil {
+		t.Fatalf("registerFlags() error = %v", err)
+	}
+	root.SetArgs([]string{})
+	root.SetOut(&bytes.Buffer{})
+	root.SetErr(&bytes.Buffer{})
+	if err := root.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	if !sawJSON {
+		t.Errorf("JSONOutput = false inside RunE; viper's `json: true` never reached the flag global")
+	}
+	if !written {
+		t.Errorf("OutputJSON reported written = false; JSON mode was not active")
+	}
+	if !strings.Contains(out.String(), `"hello"`) {
+		t.Errorf("clix.Stdout = %q, want the JSON document", out.String())
+	}
+}
+
+// TestBindViper_CommandLineBeatsViper pins the precedence rule: an explicit
+// flag always wins over viper, including an explicit false against a config
+// file that says true. An implementation that writes the viper value back
+// without consulting flag.Changed fails here.
+func TestBindViper_CommandLineBeatsViper(t *testing.T) {
+	restoreFlagState(t)
+	writeViperConfig(t, "json: true\n")
+
+	var sawJSON bool
+	root := &cobra.Command{
+		Use: "app",
+		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+			return BindViper(cmd)
+		},
+		RunE: func(_ *cobra.Command, _ []string) error {
+			sawJSON = JSONOutput
+			return nil
+		},
+	}
+	if err := registerFlags(root); err != nil {
+		t.Fatalf("registerFlags() error = %v", err)
+	}
+	root.SetArgs([]string{"--json=false"})
+	root.SetOut(&bytes.Buffer{})
+	root.SetErr(&bytes.Buffer{})
+	if err := root.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	if sawJSON {
+		t.Errorf("JSONOutput = true; an explicit --json=false must beat viper's `json: true`")
+	}
+	if JSONOutput {
+		t.Errorf("JSONOutput = true after Execute; want false")
+	}
+
+	// The case above passes even without the flag.Changed guard, because
+	// viper.BindPFlag already ranks a changed flag above the config file:
+	// with --json=false, viper.GetBool("json") is already false. Only
+	// viper's explicit override layer sits above a changed flag, so that is
+	// where the guard earns its keep — an app that calls viper.Set must
+	// still not override what the operator typed on the command line.
+	viper.Set("json", true)
+	if !viper.GetBool("json") {
+		t.Fatalf("test setup: viper.Set override did not take effect")
+	}
+
+	JSONOutput = false
+	override := &cobra.Command{
+		Use: "app",
+		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+			return BindViper(cmd)
+		},
+		RunE: func(_ *cobra.Command, _ []string) error {
+			sawJSON = JSONOutput
+			return nil
+		},
+	}
+	if err := registerFlags(override); err != nil {
+		t.Fatalf("registerFlags() error = %v", err)
+	}
+	override.SetArgs([]string{"--json=false"})
+	override.SetOut(&bytes.Buffer{})
+	override.SetErr(&bytes.Buffer{})
+	if err := override.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	if sawJSON {
+		t.Errorf("JSONOutput = true; an explicit --json=false must beat a viper.Set override too (the flag.Changed guard)")
 	}
 }
