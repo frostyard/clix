@@ -42,8 +42,8 @@ improvising, whichever agent you are:
 
 - **Go 1.26.6 or newer** (the module targets `go 1.26.6`)
 - `make`
-- Optional: [`golangci-lint`](https://golangci-lint.run/) (v2) for `make lint`
-  — `make lint` skips with a message when it is missing and warns when the
+- [`golangci-lint`](https://golangci-lint.run/) (v2) for `make lint`
+  — `make lint` fails with an installation hint when it is missing and warns when the
   installed release differs from `GOLANGCI_LINT_VERSION` in the `Makefile`; CI always runs exactly that pinned release with
   `.golangci.yml`, so install it with
   `go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v<version>`;
@@ -58,7 +58,7 @@ throwaway consumer program with `go build`).
 
 ```bash
 make test            # run all tests (unit tests + tests/e2e/); writes coverage.out for the clix package
-make lint            # run golangci-lint (.golangci.yml; skips if not installed,
+make lint            # run golangci-lint (.golangci.yml; fails if not installed,
                      # warns if not the GOLANGCI_LINT_VERSION pinned in the Makefile)
 make check           # fmt + lint + test + coverage floor (pre-commit gate)
 make coverage-check  # enforce the 95.0% statement-coverage floor on coverage.out (scripts/check-coverage.sh)
