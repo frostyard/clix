@@ -51,8 +51,10 @@ func main() {
 
 			// OutputJSON writes to stdout when --json is set. An error means
 			// the JSON could not be encoded (a fallback envelope was written)
-			// or could not be written at all (nothing reached stdout); either
-			// way, report it rather than falling through to text.
+			// or the complete document could not be written. A zero-byte write
+			// leaves stdout empty; a partial short write can emit bytes but
+			// returns written=false with an error wrapping io.ErrShortWrite.
+			// Either way, report it rather than falling through to text.
 			written, err := clix.OutputJSON(result)
 			if err != nil {
 				return err
