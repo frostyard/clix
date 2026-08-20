@@ -63,15 +63,18 @@ PR template ──► review rubric ──► CI gates ──► corrections ─
     documented CI job inventory against
     [.coverage-thresholds.json](../../.coverage-thresholds.json) — all 1.0,
     `never_relax: true` (the loop may tighten, never loosen).
-  - *Release config* (`release-config`): `goreleaser check` validates
-    [`.goreleaser.yaml`](../../.goreleaser.yaml) on every pull request, so a
-    broken release configuration fails before merge instead of on a tag push,
-    when the tag is already immutable. It runs the GoReleaser Pro
-    distribution — the config sets `pro: true` and the OSS build refuses it —
-    and needs the org secret `GORELEASER_KEY`. `make release-check` runs the
-    same check locally, skipping with a message when goreleaser is absent; it
-    is deliberately not part of `make check`, so contributors need not install
-    goreleaser.
+  - *Release config* (`release-config`): one stable required context validates
+    [`.goreleaser.yaml`](../../.goreleaser.yaml) before merge. GitHub withholds
+    `GORELEASER_KEY` from fork pull requests, so that matrix branch removes only
+    the top-level `pro: true` marker into a temporary config and runs the
+    secret-independent OSS `goreleaser check` over the shared body.
+    Same-repository pull requests, pushes to `main`, scheduled/manual runs, and
+    `merge_group` retain the authoritative GoReleaser Pro check with the org
+    key. A broken config therefore fails before an immutable tag exists without
+    making the required job context disappear for contributors. `make
+    release-check` runs the installed checker locally, skipping with a message
+    when goreleaser is absent; it is deliberately not part of `make check`, so
+    contributors need not install goreleaser.
   - The statement-coverage floor is 95.0% (`COVERAGE_MIN` and the script's
     default; `make coverage-check` after `make test`); there is no coverage
     service, and `make test-cover` still produces a local `coverage.html` for

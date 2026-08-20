@@ -161,11 +161,28 @@ jobs:
         with:
           go-version: "1.26.6"
 
-      # `goreleaser check` validates .goreleaser.yaml before merge, so a broken
-      # release configuration fails here instead of on a tag push, when the tag
-      # is already immutable. The Pro distribution is required: the config sets
-      # `pro: true` and the OSS build refuses it.
-      - name: Validate .goreleaser.yaml
+      # Fork pull requests do not receive GORELEASER_KEY. Validate the complete
+      # OSS-compatible body there after removing only the Pro marker; trusted
+      # events retain the authoritative Pro check below. Both paths stay in this
+      # job so the required "Release config" context always reports.
+      - name: Prepare secret-independent fork config
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
+        run: |
+          test "$(grep -c '^pro:[[:space:]]*true[[:space:]]*$' .goreleaser.yaml)" -eq 1
+          sed '/^pro:[[:space:]]*true[[:space:]]*$/d' .goreleaser.yaml > .goreleaser.oss.yaml
+          test -s .goreleaser.oss.yaml
+          ! grep -q '^pro:' .goreleaser.oss.yaml
+
+      - name: Validate .goreleaser.yaml without secrets
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
+        uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: check --config .goreleaser.oss.yaml
+
+      - name: Validate .goreleaser.yaml with GoReleaser Pro
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with:
           distribution: goreleaser-pro

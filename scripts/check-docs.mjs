@@ -110,6 +110,40 @@ if (workflowJobs.join("\n") !== documentedJobs.join("\n")) {
   );
 }
 
+// ---- 6. Release-config event matrix: forks stay secret-independent. ----
+const forkCondition =
+  "if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository";
+const trustedCondition =
+  "if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository";
+const occurrences = (text, needle) => text.split(needle).length - 1;
+if (occurrences(workflow, forkCondition) !== 2) {
+  failures.push("release-config: fork condition must guard preparation and the OSS validation step");
+}
+if (occurrences(workflow, trustedCondition) !== 1) {
+  failures.push("release-config: trusted-event condition must guard exactly one Pro validation step");
+}
+for (const required of [
+  "sed '/^pro:[[:space:]]*true[[:space:]]*$/d' .goreleaser.yaml > .goreleaser.oss.yaml",
+  "distribution: goreleaser\n",
+  "args: check --config .goreleaser.oss.yaml",
+  "distribution: goreleaser-pro",
+  "GORELEASER_KEY: ${{ secrets.GORELEASER_KEY }}",
+]) {
+  if (!workflow.includes(required)) failures.push(`release-config: workflow is missing ${required}`);
+}
+const releaseConfigStart = workflow.indexOf("\n  release-config:\n");
+const releaseConfigSection = workflow.slice(releaseConfigStart);
+const forkValidationStart = releaseConfigSection.indexOf("\n      - name: Validate .goreleaser.yaml without secrets\n");
+const trustedValidationStart = releaseConfigSection.indexOf("\n      - name: Validate .goreleaser.yaml with GoReleaser Pro\n");
+if (
+  releaseConfigStart === -1 ||
+  forkValidationStart === -1 ||
+  trustedValidationStart === -1 ||
+  releaseConfigSection.slice(forkValidationStart, trustedValidationStart).includes("GORELEASER_KEY")
+) {
+  failures.push("release-config: the fork validation step must not receive GORELEASER_KEY");
+}
+
 // ---- Report against thresholds. ----
 const results = {
   docs_index_coverage: rate(docsIndexed, docsTotal),
