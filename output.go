@@ -50,8 +50,9 @@ func stderr() io.Writer {
 //     {"error": true, "message": "failed to encode JSON: …"} is written
 //     instead and the encoding error is returned alongside true; if that
 //     fallback write also fails, false is returned with both errors;
-//   - if the write itself fails (closed pipe, full disk, a failing Stdout
-//     seam), nothing reached the writer: no fallback is attempted and
+//   - if the write itself fails or reports a short write (closed pipe, full
+//     disk, a failing Stdout seam), the complete document did not reach the
+//     writer: no fallback is attempted and
 //     (false, "write JSON output: …") is returned.
 //
 // Output goes to Stdout when set, otherwise to os.Stdout.
@@ -79,8 +80,12 @@ func OutputJSON(data any) (bool, error) {
 		}
 		return true, err
 	}
-	if _, err := w.Write(document.Bytes()); err != nil {
+	n, err := w.Write(document.Bytes())
+	if err != nil {
 		return false, fmt.Errorf("write JSON output: %w", err)
+	}
+	if n != document.Len() {
+		return false, fmt.Errorf("write JSON output: wrote %d of %d bytes: %w", n, document.Len(), io.ErrShortWrite)
 	}
 	return true, nil
 }
