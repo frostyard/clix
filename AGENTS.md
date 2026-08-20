@@ -195,7 +195,7 @@ CI runs on every pull request, on pushes to `main`, and on merge-queue
 (`merge_group`) branches (`.github/workflows/ci.yml`) and must pass:
 lint (the golangci-lint release pinned as `GOLANGCI_LINT_VERSION` in the
 `Makefile`, with `.golangci.yml`), security scan (`govulncheck ./...`,
-pinned at `golang.org/x/vuln/cmd/govulncheck@v1.6.0`, failing on any
+pinned at `golang.org/x/vuln/cmd/govulncheck@v1.7.0`, failing on any
 reachable vulnerability in the module graph), unit tests (`go test -v ./...`,
 including `tests/e2e/`), race-detector tests, verification (`go mod tidy`
 cleanliness, `go vet`, `gofmt`), docs integrity
