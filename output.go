@@ -49,7 +49,7 @@ func stderr() io.Writer {
 //   - if encoding fails, a fallback error envelope
 //     {"error": true, "message": "failed to encode JSON: …"} is written
 //     instead and the encoding error is returned alongside true; if that
-//     fallback write also fails, false is returned with both errors;
+//     fallback write fails or is short, false is returned with both errors;
 //   - if the write itself fails or reports a short write (closed pipe, full
 //     disk, a failing Stdout seam), the complete document did not reach the
 //     writer: no fallback is attempted and
@@ -68,15 +68,23 @@ func OutputJSON(data any) (bool, error) {
 	enc := json.NewEncoder(&document)
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(data); err != nil {
-		// Write a fallback error envelope so the "JSON was written" contract holds.
-		fallback := json.NewEncoder(w)
-		fallback.SetIndent("", "  ")
-		fallbackErr := fallback.Encode(map[string]any{
+		var fallback bytes.Buffer
+		fallbackEncoder := json.NewEncoder(&fallback)
+		fallbackEncoder.SetIndent("", "  ")
+		fallbackErr := fallbackEncoder.Encode(map[string]any{
 			"error":   true,
 			"message": fmt.Sprintf("failed to encode JSON: %v", err),
 		})
 		if fallbackErr != nil {
+			return false, errors.Join(err, fmt.Errorf("encode JSON fallback envelope: %w", fallbackErr))
+		}
+		n, fallbackErr := w.Write(fallback.Bytes())
+		if fallbackErr != nil {
 			return false, errors.Join(err, fmt.Errorf("write JSON fallback envelope: %w", fallbackErr))
+		}
+		if n != fallback.Len() {
+			fallbackErr = fmt.Errorf("write JSON fallback envelope: wrote %d of %d bytes: %w", n, fallback.Len(), io.ErrShortWrite)
+			return false, errors.Join(err, fallbackErr)
 		}
 		return true, err
 	}
