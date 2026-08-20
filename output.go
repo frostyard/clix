@@ -48,7 +48,8 @@ func stderr() io.Writer {
 // touched, and
 //   - if encoding fails, a fallback error envelope
 //     {"error": true, "message": "failed to encode JSON: …"} is written
-//     instead and the encoding error is returned alongside true;
+//     instead and the encoding error is returned alongside true; if that
+//     fallback write also fails, false is returned with both errors;
 //   - if the write itself fails (closed pipe, full disk, a failing Stdout
 //     seam), nothing reached the writer: no fallback is attempted and
 //     (false, "write JSON output: …") is returned.
@@ -69,10 +70,13 @@ func OutputJSON(data any) (bool, error) {
 		// Write a fallback error envelope so the "JSON was written" contract holds.
 		fallback := json.NewEncoder(w)
 		fallback.SetIndent("", "  ")
-		_ = fallback.Encode(map[string]any{
+		fallbackErr := fallback.Encode(map[string]any{
 			"error":   true,
 			"message": fmt.Sprintf("failed to encode JSON: %v", err),
 		})
+		if fallbackErr != nil {
+			return false, errors.Join(err, fmt.Errorf("write JSON fallback envelope: %w", fallbackErr))
+		}
 		return true, err
 	}
 	if _, err := w.Write(document.Bytes()); err != nil {
