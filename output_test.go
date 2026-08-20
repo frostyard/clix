@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"io"
 	"os"
 	"strings"
 	"testing"
@@ -270,6 +271,12 @@ func (f *failingWriter) Write([]byte) (int, error) {
 	return 0, errBrokenPipe
 }
 
+type shortWriter struct{}
+
+func (shortWriter) Write(p []byte) (int, error) {
+	return len(p) - 1, nil
+}
+
 // TestOutputJSON_WriteError pins the write-failure contract: a writer that
 // fails is reported as not written, the error names the write (not the
 // encoder), and no fallback envelope is attempted on the broken writer.
@@ -289,6 +296,24 @@ func TestOutputJSON_WriteError(t *testing.T) {
 	}
 	if fw.calls != 1 {
 		t.Errorf("writer saw %d Write calls, want exactly 1 (no fallback envelope on a broken writer)", fw.calls)
+	}
+}
+
+func TestOutputJSON_ShortWrite(t *testing.T) {
+	Stdout = shortWriter{}
+	defer func() { Stdout = nil }()
+	JSONOutput = true
+	defer func() { JSONOutput = false }()
+
+	written, err := OutputJSON(map[string]int{"a": 1})
+	if written {
+		t.Error("OutputJSON() = true on a short write, want false")
+	}
+	if !errors.Is(err, io.ErrShortWrite) {
+		t.Errorf("OutputJSON() error = %v, want io.ErrShortWrite", err)
+	}
+	if err == nil || !strings.HasPrefix(err.Error(), "write JSON output: ") {
+		t.Errorf("OutputJSON() error = %v, want write context", err)
 	}
 }
 
