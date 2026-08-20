@@ -163,7 +163,7 @@ GitHub Actions CI (`.github/workflows/ci.yml`) runs on pushes to `main`, all PRs
 | **race** | `go test -race ./...` — the whole suite under the race detector; `concurrency_test.go` supplies the concurrent workload that gives the job something to detect |
 | **verify** | `go mod tidy` drift check, `go vet`, `gofmt` formatting check |
 | **docs-gate** | `node scripts/check-docs.mjs` — docs-index coverage, relative-link integrity, symlink (alias) resolution, and CI job inventory agreement against `.coverage-thresholds.json` |
-| **release-config** | GoReleaser Pro `goreleaser check` validates `.goreleaser.yaml` before merge, using the `~> v2` release line |
+| **release-config** | One stable `Release config` context validates `.goreleaser.yaml` on the `~> v2` line: fork pull requests receive no org secrets, so they remove only the top-level `pro: true` marker into a temporary file and run the OSS checker over the shared config body; same-repository pull requests, pushes, scheduled/manual runs, and `merge_group` run the authoritative GoReleaser Pro check with `GORELEASER_KEY` |
 
 Each concern runs as a separate job for clear failure signals in the GitHub UI. The Makefile `check` target remains for local pre-commit use. No build job — this is a library with no binary artifacts. The whole declare → review → gate → learn → observe loop is described in [quality-loop.md](quality-loop.md).
 
