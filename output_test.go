@@ -343,6 +343,28 @@ func TestOutputJSON_EncodeErrorFallbackWriteError(t *testing.T) {
 	}
 }
 
+func TestOutputJSON_EncodeErrorFallbackShortWrite(t *testing.T) {
+	Stdout = shortWriter{}
+	defer func() { Stdout = nil }()
+	JSONOutput = true
+	defer func() { JSONOutput = false }()
+
+	written, err := OutputJSON(make(chan int))
+	if written {
+		t.Error("OutputJSON() = true when the fallback write was short, want false")
+	}
+	var encodeErr *json.UnsupportedTypeError
+	if !errors.As(err, &encodeErr) {
+		t.Errorf("OutputJSON() error = %v, want original unsupported-type error", err)
+	}
+	if !errors.Is(err, io.ErrShortWrite) {
+		t.Errorf("OutputJSON() error = %v, want io.ErrShortWrite", err)
+	}
+	if err == nil || !strings.Contains(err.Error(), "write JSON fallback envelope: wrote ") {
+		t.Errorf("OutputJSON() error = %q, want fallback short-write context", err)
+	}
+}
+
 func TestOutputJSONError_WriteError(t *testing.T) {
 	fw := &failingWriter{}
 	Stdout = fw
