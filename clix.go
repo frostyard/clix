@@ -54,6 +54,9 @@ func (a *App) VersionString() string {
 // shorthands, Run returns an error naming the collision before executing
 // anything, rather than letting pflag panic.
 func (a *App) Run(cmd *cobra.Command) error {
+	if cmd == nil {
+		return fmt.Errorf("clix: Run: root command is nil")
+	}
 	a.defaults()
 	if err := registerFlags(cmd); err != nil {
 		return err
