@@ -35,6 +35,7 @@ There are no subpackages or internal directories apart from the end-to-end suite
 ```
 main() creates App{} with build-time metadata
   └─ App.Run(rootCmd)
+       ├─ reject a nil root command
        ├─ registerFlags(cmd)          ← adds --json, --verbose, --dry-run, --silent as persistent flags
        └─ fang.Execute(cmd, ...)      ← runs the cobra command tree with version + signal handling
             └─ Command handlers use:
@@ -59,9 +60,10 @@ main() creates App{} with build-time metadata
 `"1.2.3 (Commit: abc123) (Date: 2026-03-04) (Built by: ci)"`
 
 **`App.Run(cmd)`** is the main entry point:
-1. Fills zero-value fields with defaults
-2. Calls `registerFlags(cmd)` to add common persistent flags; if that returns an error, `Run` returns it before executing anything
-3. Delegates to `fang.Execute()` with version string and `SIGINT`/`SIGTERM` signal handling
+1. Rejects a nil root command with `clix: Run: root command is nil`
+2. Fills zero-value fields with defaults
+3. Calls `registerFlags(cmd)` to add common persistent flags; if that returns an error, `Run` returns it before executing anything
+4. Delegates to `fang.Execute()` with version string and `SIGINT`/`SIGTERM` signal handling
 
 ### flags.go — Common Flags
 

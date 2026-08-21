@@ -84,6 +84,16 @@ func runNoPanic(t *testing.T, app *App, cmd *cobra.Command) (err error) {
 	return app.Run(cmd)
 }
 
+func TestRunNilCommandReturnsError(t *testing.T) {
+	err := runNoPanic(t, &App{}, nil)
+	if err == nil {
+		t.Fatal("Run(nil) = nil error, want contextual error")
+	}
+	if got, want := err.Error(), "clix: Run: root command is nil"; got != want {
+		t.Errorf("Run(nil) error = %q, want %q", got, want)
+	}
+}
+
 func TestRunReservedShorthandCollisionReturnsError(t *testing.T) {
 	t.Cleanup(func() { JSONOutput, Verbose, DryRun, Silent = false, false, false, false })
 
