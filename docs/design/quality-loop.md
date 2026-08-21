@@ -75,10 +75,14 @@ PR template ──► review rubric ──► CI gates ──► corrections ─
     release-check` runs the installed checker locally, skipping with a message
     when goreleaser is absent; it is deliberately not part of `make check`, so
     contributors need not install goreleaser.
-  - The statement-coverage floor is 95.0% (`COVERAGE_MIN` and the script's
-    default; `make coverage-check` after `make test`); there is no coverage
-    service, and `make test-cover` still produces a local `coverage.html` for
-    inspection. The floor may tighten, never loosen.
+   - The statement-coverage floor is 95.0%. `make coverage-check` (run after
+     `make test`, and the CI gate) passes that floor to
+     `scripts/check-coverage.sh` as an explicit argument, so an inherited
+     `COVERAGE_MIN` in the environment cannot relax it; the script's
+     `COVERAGE_MIN` (or `95.0`) default applies only to an ad hoc direct
+     invocation with no explicit floor. There is no coverage service, and
+     `make test-cover` still produces a local `coverage.html` for inspection.
+     The floor may tighten, never loosen.
 - **Learn** — corrections land in
   [.memory/corrections.jsonl](../../.memory/README.md) (append-only,
   five-field schema) and are promoted into `AGENTS.md`, docs, or skills;

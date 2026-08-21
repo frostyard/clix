@@ -36,7 +36,7 @@ test:
 
 ## coverage-check: Enforce the 95.0% total statement-coverage floor on coverage.out (scripts/check-coverage.sh)
 coverage-check:
-	./scripts/check-coverage.sh
+	./scripts/check-coverage.sh coverage.out 95.0
 
 ## test-coverage-check: Self-test scripts/check-coverage.sh against fixture profiles
 test-coverage-check:
