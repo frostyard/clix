@@ -105,9 +105,11 @@ codes ([tests/e2e/README.md](tests/e2e/README.md)).
   `OutputJSON`/`OutputJSONError`, `NewReporter`, or `BindViper` is
   deliberate, called out in the PR, marked `feat!`/`fix!`, and reflected in
   `README.md` and `docs/design/overview.md`
-- Silent > JSON > Text: `--silent` suppresses everything, `--json` switches
-  to structured stdout, default is text on stderr; data stays on stdout —
-  keep this on any new output path
+- Silent > JSON > Text: `--silent` suppresses reporter/progress output
+  (`NewReporter` returns `NoopReporter`) but application data stays on stdout —
+  `--json --silent` omits the JSON reporter record yet `OutputJSON` still emits
+  the result document; `--json` switches the reporter to structured stdout,
+  default is text on stderr — keep this on any new output path
 
 ## Commits & Pull Requests
 
