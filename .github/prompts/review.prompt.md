@@ -19,9 +19,11 @@ Apply the machine-readable controls in
      `BindViper`; breaking changes must be deliberate, documented in
      `README.md` and `docs/design/overview.md`, and reflected in the
      Conventional Commit type (`feat!`/`fix!`).
-   - **Silent > JSON > Text** — `--silent` suppresses everything, `--json`
-     switches to structured stdout, default is text on stderr; data stays on
-     stdout.
+   - **Silent > JSON > Text** — `--silent` suppresses reporter/progress
+     output (`NoopReporter`) but application data stays on stdout;
+     `--json --silent` omits the JSON reporter record yet `OutputJSON` still
+     emits the result document. `--json` switches the reporter to structured
+     stdout, default is text on stderr.
    - **Test isolation** — fresh `cobra.Command` per test; package-level flag
      variables reset with `defer`; output captured by assigning a
      `bytes.Buffer` to `clix.Stdout` / `clix.Stderr` with a `defer` reset to
