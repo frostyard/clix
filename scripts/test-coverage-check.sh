@@ -82,6 +82,20 @@ else
     failures=$((failures + 1))
 fi
 
+echo "--- expect exit 1: an explicit floor argument outranks a lower COVERAGE_MIN"
+if COVERAGE_MIN=40 "$CHECK" "$TMP/below.out" 80.0; then
+    echo "FAIL: explicit 80.0 floor relaxed by COVERAGE_MIN=40 (below-floor profile accepted)"
+    failures=$((failures + 1))
+else
+    status=$?
+    if [ "$status" -eq 1 ]; then
+        echo "PASS: explicit floor argument took precedence over COVERAGE_MIN"
+    else
+        echo "FAIL: explicit floor rejected below-floor profile with unexpected exit $status"
+        failures=$((failures + 1))
+    fi
+fi
+
 if [ "$failures" -ne 0 ]; then
     echo "test-coverage-check: $failures assertion(s) failed" >&2
     exit 1
