@@ -230,6 +230,43 @@ func TestBindViper_UnregisteredFlagError(t *testing.T) {
 	}
 }
 
+// TestBindViper_UnregisteredFlagError_AmbiguousLeafName ensures BindViper
+// names the failing command by its full CommandPath, not just its bare Name,
+// so that two same-named leaves under different parents produce distinct
+// error text.
+func TestBindViper_UnregisteredFlagError_AmbiguousLeafName(t *testing.T) {
+	viper.Reset()
+	t.Cleanup(viper.Reset)
+
+	root := &cobra.Command{Use: "root"}
+	groupA := &cobra.Command{Use: "groupa"}
+	groupB := &cobra.Command{Use: "groupb"}
+	leafA := &cobra.Command{Use: "list"}
+	leafB := &cobra.Command{Use: "list"}
+	groupA.AddCommand(leafA)
+	groupB.AddCommand(leafB)
+	root.AddCommand(groupA, groupB)
+
+	errA := BindViper(leafA)
+	if errA == nil {
+		t.Fatal("BindViper(leafA) = nil error, want an error naming the missing flag")
+	}
+	errB := BindViper(leafB)
+	if errB == nil {
+		t.Fatal("BindViper(leafB) = nil error, want an error naming the missing flag")
+	}
+
+	if !strings.Contains(errA.Error(), `"root groupa list"`) {
+		t.Errorf("BindViper(leafA) error = %q, want it to contain %q", errA, `"root groupa list"`)
+	}
+	if !strings.Contains(errB.Error(), `"root groupb list"`) {
+		t.Errorf("BindViper(leafB) error = %q, want it to contain %q", errB, `"root groupb list"`)
+	}
+	if errA.Error() == errB.Error() {
+		t.Errorf("BindViper() errors for distinct leaves are identical: %q", errA)
+	}
+}
+
 // restoreFlagState resets the package-level flag variables, clix.Stdout, and
 // viper so a viper-backed test cannot leak into its neighbours.
 func restoreFlagState(t *testing.T) {
