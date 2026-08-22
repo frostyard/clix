@@ -111,7 +111,7 @@ func BindViper(cmd *cobra.Command) error {
 	for _, name := range []string{"json", "verbose", "dry-run", "silent"} {
 		set, flag := lookupFlag(cmd, name)
 		if flag == nil {
-			return fmt.Errorf("clix: BindViper: --%s is not registered on %q; call App.Run on the root command first", name, cmd.Name())
+			return fmt.Errorf("clix: BindViper: --%s is not registered on %q; call App.Run on the root command first", name, cmd.CommandPath())
 		}
 		if err := viper.BindPFlag(name, flag); err != nil {
 			return err
