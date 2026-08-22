@@ -184,7 +184,7 @@ The Makefile lint target fails with a pinned-version installation hint when `gol
 ```bash
 make test            # run all tests
 make lint            # golangci-lint (fails with an install hint if missing)
-make check           # fmt + lint + test (pre-commit gate)
+make check           # fmt + lint + test + coverage floor (pre-commit gate)
 make test-cover      # tests with coverage report (coverage.html)
 make fmt             # format Go source files
 make tidy            # go mod tidy
