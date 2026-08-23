@@ -58,7 +58,8 @@ func TestBindViper(t *testing.T) {
 	}
 
 	// Pin the bound key set: each common flag must reach viper under its own key.
-	for _, name := range []string{"json", "verbose", "dry-run", "silent"} {
+	for _, f := range commonFlags() {
+		name := f.name
 		if viper.GetBool(name) {
 			t.Fatalf("viper key %q unexpectedly true before the flag was set", name)
 		}

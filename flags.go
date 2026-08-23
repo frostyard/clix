@@ -108,7 +108,8 @@ func checkReserved(root, cmd *cobra.Command, persistent bool, f commonFlag) erro
 // a clix-namespaced error when a flag is not registered on cmd, which means
 // App.Run has not registered the flags on the root command yet.
 func BindViper(cmd *cobra.Command) error {
-	for _, name := range []string{"json", "verbose", "dry-run", "silent"} {
+	for _, f := range commonFlags() {
+		name := f.name
 		set, flag := lookupFlag(cmd, name)
 		if flag == nil {
 			return fmt.Errorf("clix: BindViper: --%s is not registered on %q; call App.Run on the root command first", name, cmd.CommandPath())
