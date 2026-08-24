@@ -53,7 +53,28 @@ func (a *App) VersionString() string {
 // by clix on the root command. If cmd already defines one of those names or
 // shorthands, Run returns an error naming the collision before executing
 // anything, rather than letting pflag panic.
+//
+// Run is a thin wrapper around RunContext using context.Background(); use
+// RunContext directly when the caller needs to bound execution with a
+// deadline or let a supervising process cancel the run.
 func (a *App) Run(cmd *cobra.Command) error {
+	return a.RunContext(context.Background(), cmd)
+}
+
+// RunContext is Run with a caller-supplied context: it registers common
+// persistent flags on cmd, then executes the command via fang.Execute with
+// the formatted version string and signal handling, running under ctx.
+//
+// Prefer RunContext over Run when the caller wants to bound execution with a
+// deadline or timeout, or let a supervising process (a test, a parent
+// command, an orchestrator) cancel the run instead of relying solely on the
+// OS signal handling fang.Execute installs for SIGINT/SIGTERM.
+//
+// The flags --json, --verbose/-v, --dry-run/-n, and --silent/-s are reserved
+// by clix on the root command. If cmd already defines one of those names or
+// shorthands, RunContext returns an error naming the collision before
+// executing anything, rather than letting pflag panic.
+func (a *App) RunContext(ctx context.Context, cmd *cobra.Command) error {
 	if cmd == nil {
 		return fmt.Errorf("clix: Run: root command is nil")
 	}
@@ -62,7 +83,7 @@ func (a *App) Run(cmd *cobra.Command) error {
 		return err
 	}
 	return fang.Execute(
-		context.Background(),
+		ctx,
 		cmd,
 		fang.WithVersion(a.VersionString()),
 		fang.WithNotifySignal(os.Interrupt, syscall.SIGTERM),

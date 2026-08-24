@@ -1,6 +1,8 @@
 package clix
 
 import (
+	"context"
+	"errors"
 	"strings"
 	"testing"
 
@@ -68,6 +70,31 @@ func TestRunRegistersFlags(t *testing.T) {
 	}
 	if cmd.PersistentFlags().Lookup("silent") == nil {
 		t.Error("--silent flag not registered")
+	}
+}
+
+func TestRunContextPropagatesCancellation(t *testing.T) {
+	defer func() {
+		JSONOutput = false
+		Verbose = false
+		DryRun = false
+		Silent = false
+	}()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // cancel before the command runs
+
+	cmd := &cobra.Command{
+		Use: "test",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cmd.Context().Err()
+		},
+	}
+
+	app := App{Version: "1.0.0"}
+	err := app.RunContext(ctx, cmd)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("RunContext() error = %v, want context.Canceled", err)
 	}
 }
 
