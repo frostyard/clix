@@ -1,4 +1,4 @@
-.PHONY: all clean fmt lint lint-version-check verify test test-cover coverage-check test-coverage-check release-check tidy check bump help
+.PHONY: all clean fmt lint lint-version-check verify test test-cover coverage-check test-coverage-check release-check tidy check ci bump help
 
 # Go commands
 GO := go
@@ -98,6 +98,17 @@ verify:
 
 ## check: Run fmt, lint, test, and the coverage floor
 check: fmt lint test test-coverage-check coverage-check
+
+## ci: Credential-free gate for CI (core ADR-0022/ADR-0043): verify, then this repository's coverage floor
+ci:
+	@echo "==> ci: verify"
+	@$(MAKE) --no-print-directory verify
+	@echo "==> ci: tests with coverage"
+	@$(MAKE) --no-print-directory test
+	@echo "==> ci: self-test the coverage floor script"
+	@$(MAKE) --no-print-directory test-coverage-check
+	@echo "==> ci: coverage floor"
+	@$(MAKE) --no-print-directory coverage-check
 
 ## bump: Tag and push next version (requires clean tree and svu)
 bump:

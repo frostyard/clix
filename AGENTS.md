@@ -78,8 +78,10 @@ go test -v ./tests/e2e/...      # end-to-end suite alone
 node scripts/check-docs.mjs     # docs-integrity gate (index, links, aliases, CI job inventory)
 ```
 
-Run `make check` before opening a pull request; CI additionally checks
-`go mod tidy` drift and `go vet` (the `verify` job) and the docs gate.
+Run `make check` before opening a pull request; `make verify` is the
+credential-free, non-mutating gate a read-only reviewer runs and `make ci` is
+what CI runs — `make verify` / `make check` / `make ci` is core ADR-0043's
+gate triad — and CI additionally runs the docs gate.
 
 ## Architecture
 
