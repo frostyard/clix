@@ -1,4 +1,4 @@
-.PHONY: all clean fmt lint test test-cover coverage-check test-coverage-check release-check tidy check bump help
+.PHONY: all clean fmt lint verify test test-cover coverage-check test-coverage-check release-check tidy check bump help
 
 # Go commands
 GO := go
@@ -6,7 +6,7 @@ GOFMT := gofmt
 # Pinned golangci-lint release. Single source of truth: the CI Lint job reads
 # this value (see .github/workflows/ci.yml) and `make lint` warns when the
 # installed binary differs. Bump it in a dedicated commit.
-GOLANGCI_LINT_VERSION := 2.12.2
+GOLANGCI_LINT_VERSION := 2.13.1
 GOFILES := $(shell find . -type f -name '*.go' -not -path "./vendor/*")
 
 all: fmt lint test
@@ -64,6 +64,22 @@ tidy:
 clean:
 	rm -f coverage.out coverage.html
 	$(GO) clean
+
+## verify: Credential-free, non-mutating gate (what a read-only reviewer runs): tidy diff, gofmt -l, vet, lint at the exact pin, tests
+verify:
+	@echo "==> verify: go.mod is tidy"
+	$(GO) mod tidy -diff
+	@echo "==> verify: gofmt"
+	@unformatted="$$($(GOFMT) -l $(GOFILES))"; \
+	if [ -n "$$unformatted" ]; then echo "$$unformatted"; echo "gofmt: files need formatting (run make fmt)"; exit 1; fi
+	@echo "==> verify: go vet"
+	$(GO) vet ./...
+	@echo "==> verify: golangci-lint $(GOLANGCI_LINT_VERSION)"
+	@installed="$$(golangci-lint version --short 2>/dev/null)" || { echo "golangci-lint $(GOLANGCI_LINT_VERSION) is required for make verify (not installed)"; exit 1; }; \
+	if [ "$$installed" != "$(GOLANGCI_LINT_VERSION)" ]; then echo "expected golangci-lint $(GOLANGCI_LINT_VERSION), found $$installed"; exit 1; fi
+	golangci-lint run
+	@echo "==> verify: tests"
+	$(GO) test ./...
 
 ## check: Run fmt, lint, test, and the coverage floor
 check: fmt lint test test-coverage-check coverage-check
