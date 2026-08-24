@@ -9,7 +9,7 @@
 Single flat package (`package clix`) with four source files and matching test files:
 
 ```
-clix.go          — App struct, Run(), VersionString()
+clix.go          — App struct, Run(), RunContext(), VersionString()
 clix_test.go
 flags.go         — Package-level flag variables, registerFlags(), BindViper()
 flags_test.go
@@ -64,6 +64,8 @@ main() creates App{} with build-time metadata
 2. Fills zero-value fields with defaults
 3. Calls `registerFlags(cmd)` to add common persistent flags; if that returns an error, `Run` returns it before executing anything
 4. Delegates to `fang.Execute()` with version string and `SIGINT`/`SIGTERM` signal handling
+
+**`App.RunContext(ctx, cmd)`** is `Run` with a caller-supplied `context.Context`: `Run(cmd)` is implemented as `RunContext(context.Background(), cmd)`, and `RunContext` performs the same nil-check, `defaults()`, and `registerFlags(cmd)` steps before calling `fang.Execute(ctx, cmd, ...)` with the given `ctx` instead of a hardcoded background context (the `SIGINT`/`SIGTERM` handling `fang.WithNotifySignal` installs is unchanged). Use it to bound a run with a deadline/timeout or let a supervising process (a test, a parent command, an orchestrator) cancel execution; `fang.Execute` threads `ctx` onto `cmd.Context()`, so a `RunE` observes cancellation via `cmd.Context().Err()`. Pinned by `TestRunContextPropagatesCancellation` in `clix_test.go`.
 
 ### flags.go — Common Flags
 
