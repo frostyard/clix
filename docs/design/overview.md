@@ -165,7 +165,7 @@ GitHub Actions CI (`.github/workflows/ci.yml`) runs on pushes to `main`, all PRs
 
 | Job | Purpose |
 |---|---|
-| **lint** | `golangci-lint` via `golangci-lint-action@v9`, installing the release pinned as `GOLANGCI_LINT_VERSION` in the `Makefile` (read by a `sed` step; bump it in a dedicated commit), configured by `.golangci.yml` (the same file `make lint` reads) |
+| **lint** | `golangci-lint` via `jdx/mise-action`, installing the release pinned in `mise.toml` and checksum-verified against `mise.lock` (core ADR-0043; bump the pin in a dedicated commit), configured by `.golangci.yml` (the same file `make lint` reads) |
 | **security** | `govulncheck ./...` with `golang.org/x/vuln/cmd/govulncheck@v1.7.0` pinned (job-level `permissions: contents: read`, 15-minute timeout) — fails on a reachable vulnerability in the module graph |
 | **test** | `go test -v -coverprofile=coverage.out -covermode=atomic -coverpkg=github.com/frostyard/clix ./...` — unit tests plus the `tests/e2e/` suite, then `make test-coverage-check` and `make coverage-check` (95.0% statement-coverage floor on the `clix` package) |
 | **race** | `go test -race ./...` — the whole suite under the race detector; `concurrency_test.go` supplies the concurrent workload that gives the job something to detect |
@@ -175,7 +175,7 @@ GitHub Actions CI (`.github/workflows/ci.yml`) runs on pushes to `main`, all PRs
 
 Each concern runs as a separate job for clear failure signals in the GitHub UI. The Makefile `check` target remains for local pre-commit use. No build job — this is a library with no binary artifacts. The whole declare → review → gate → learn → observe loop is described in [quality-loop.md](quality-loop.md).
 
-The Makefile lint target fails with a pinned-version installation hint when `golangci-lint` is not installed, warns when the installed release differs from `GOLANGCI_LINT_VERSION` (so a local run is not silently linted by a different version than CI), and fails on lint errors when the binary is present.
+The Makefile lint target fails when `mise.toml` pins no `golangci-lint` or the binary is not installed (with a `mise install` hint), warns when the installed release differs from the `mise.toml` pin (so a local run is not silently linted by a different version than CI), and fails on lint errors when the binary is present.
 
 ## Release
 

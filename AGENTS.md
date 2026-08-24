@@ -40,14 +40,18 @@ improvising, whichever agent you are:
 
 ### Prerequisites
 
-- **Go 1.26.6 or newer** (the module targets `go 1.26.6`)
+- **Go 1.26.7** (`go.mod`'s `toolchain go1.26.7` line is the only Go pin;
+  CI, `mise`, and Snowcat workers all read it)
 - `make`
-- [`golangci-lint`](https://golangci-lint.run/) (v2) for `make lint`
-  — `make lint` fails with an installation hint when it is missing and warns when the
-  installed release differs from `GOLANGCI_LINT_VERSION` in the `Makefile`; CI always runs exactly that pinned release with
-  `.golangci.yml`, so install it with
-  `go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v<version>`;
-  [`svu`](https://github.com/caarlos0/svu) for `make bump`; Node ≥ 20 for
+- [`mise`](https://mise.jdx.dev/) to provision every other pinned tool:
+  `mise install` reads [`mise.toml`](mise.toml) and verifies each download
+  against [`mise.lock`](mise.lock) (core ADR-0043). Today that is
+  [`golangci-lint`](https://golangci-lint.run/) v2 for `make lint`
+  (configured by [`.golangci.yml`](.golangci.yml)); the Makefile reads the
+  pin from `mise.toml`, fails with `mise install` when the binary is absent,
+  warns when the installed version differs, and fails on findings; CI
+  installs the same lock through `jdx/mise-action`
+- [`svu`](https://github.com/caarlos0/svu) for `make bump`; Node ≥ 20 for
   the docs-integrity gate
 
 clix is a library: there is no binary to build or install. Building and
@@ -59,7 +63,7 @@ throwaway consumer program with `go build`).
 ```bash
 make test            # run all tests (unit tests + tests/e2e/); writes coverage.out for the clix package
 make lint            # run golangci-lint (.golangci.yml; fails if not installed,
-                     # warns if not the GOLANGCI_LINT_VERSION pinned in the Makefile)
+                     # warns if not the golangci-lint pin in mise.toml)
 make check           # fmt + lint + test + coverage floor (pre-commit gate)
 make coverage-check  # enforce the 95.0% statement-coverage floor on coverage.out (scripts/check-coverage.sh)
 make test-coverage-check   # self-test scripts/check-coverage.sh with fixture profiles
@@ -195,8 +199,9 @@ denies these at the tool layer).
 
 CI runs on every pull request, on pushes to `main`, and on merge-queue
 (`merge_group`) branches (`.github/workflows/ci.yml`) and must pass:
-lint (the golangci-lint release pinned as `GOLANGCI_LINT_VERSION` in the
-`Makefile`, with `.golangci.yml`), security scan (`govulncheck ./...`,
+lint (the golangci-lint release pinned in
+[`mise.toml`](mise.toml) with its checksums in [`mise.lock`](mise.lock),
+installed by `jdx/mise-action`, with `.golangci.yml`), security scan (`govulncheck ./...`,
 pinned at `golang.org/x/vuln/cmd/govulncheck@v1.7.0`, failing on any
 reachable vulnerability in the module graph), unit tests (`go test -v ./...`,
 including `tests/e2e/`), race-detector tests, verification (`go mod tidy`

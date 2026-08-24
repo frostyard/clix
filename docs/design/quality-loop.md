@@ -38,10 +38,11 @@ PR template ──► review rubric ──► CI gates ──► corrections ─
 - **Gate** — [.github/workflows/ci.yml](../../.github/workflows/ci.yml)
   runs on every PR, every push to `main`, and every merge-queue
   (`merge_group`) branch, one job per concern:
-  - *Lint* (`golangci-lint-action`, installing the release pinned as
-    `GOLANGCI_LINT_VERSION` in the `Makefile` — the single place to bump it;
-    `make lint` warns when the local binary differs — configured by
-    `.golangci.yml`, the same file `make lint` reads), *Security Scan*
+  - *Lint* (`jdx/mise-action`, installing the golangci-lint release pinned in
+    `mise.toml` with its checksums in `mise.lock` (core ADR-0043) — the
+    single place to bump it; `make lint` warns when the local binary
+    differs — configured by `.golangci.yml`, the same file `make lint`
+    reads), *Security Scan*
     (`govulncheck ./...` with `golang.org/x/vuln/cmd/govulncheck@v1.7.0`
     pinned — fails on a reachable vulnerability anywhere in the module
     graph, including indirect modules Dependabot never proposes), *Unit Tests*
