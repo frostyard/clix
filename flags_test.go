@@ -40,6 +40,30 @@ func TestRegisterFlags(t *testing.T) {
 	}
 }
 
+// TestRegisterFlags_SecondCallOnSameRootReusesFlags pins that registerFlags
+// can run twice against the same root: the second call recognizes the flags
+// it registered on the first call and reuses them instead of reporting a
+// collision against itself or re-registering, which would panic in pflag
+// ("flag redefined").
+func TestRegisterFlags_SecondCallOnSameRootReusesFlags(t *testing.T) {
+	t.Cleanup(func() { JSONOutput, Verbose, DryRun, Silent = false, false, false, false })
+
+	cmd := &cobra.Command{Use: "test"}
+	if err := registerFlags(cmd); err != nil {
+		t.Fatalf("first registerFlags() error = %v", err)
+	}
+	first := cmd.PersistentFlags().Lookup("json")
+
+	if err := registerFlags(cmd); err != nil {
+		t.Fatalf("second registerFlags() error = %v", err)
+	}
+	second := cmd.PersistentFlags().Lookup("json")
+
+	if first != second {
+		t.Error("second registerFlags() replaced the --json flag instead of reusing it")
+	}
+}
+
 func TestBindViper(t *testing.T) {
 	viper.Reset()
 	t.Cleanup(viper.Reset)

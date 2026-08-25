@@ -34,6 +34,15 @@ func commonFlags() []commonFlag {
 	}
 }
 
+// clixOwnedAnnotation marks a flag registerFlags itself created, so a later
+// registerFlags call on the same root recognizes and reuses it instead of
+// reporting a collision against clix's own earlier registration. cobra
+// merges a root's persistent flags into its local flag set the first time it
+// executes, so after one Run/RunContext call the same *pflag.Flag turns up
+// under both cmd.PersistentFlags() and cmd.Flags(); the annotation travels
+// with it because both sets hold the identical flag pointer.
+const clixOwnedAnnotation = "clix:owned"
+
 // registerFlags adds --json, --verbose, --dry-run, and --silent as persistent
 // flags on cmd. It returns an error instead of letting pflag panic when the
 // consumer's root command, or any subcommand at any depth, already defines
@@ -42,18 +51,40 @@ func commonFlags() []commonFlag {
 // persistent flags at parse time: a colliding shorthand panics in pflag when
 // that command runs, and a colliding name silently shadows clix's flag so
 // the package-level variable is never set for that command.
+//
+// registerFlags is safe to call again on the same root: a flag it registered
+// on an earlier call is recognized by its ownership annotation and reused
+// rather than re-registered or reported as a collision, so App.Run and
+// App.RunContext can execute the same root command more than once.
 func registerFlags(cmd *cobra.Command) error {
 	if err := checkCommandTree(cmd, cmd); err != nil {
 		return err
 	}
 	for _, f := range commonFlags() {
-		if f.shorthand == "" {
-			cmd.PersistentFlags().BoolVar(f.target, f.name, false, f.usage)
+		if existing := cmd.PersistentFlags().Lookup(f.name); existing != nil && ownedByClix(existing, f) {
 			continue
 		}
-		cmd.PersistentFlags().BoolVarP(f.target, f.name, f.shorthand, false, f.usage)
+		if f.shorthand == "" {
+			cmd.PersistentFlags().BoolVar(f.target, f.name, false, f.usage)
+		} else {
+			cmd.PersistentFlags().BoolVarP(f.target, f.name, f.shorthand, false, f.usage)
+		}
+		_ = cmd.PersistentFlags().SetAnnotation(f.name, clixOwnedAnnotation, []string{"true"})
 	}
 	return nil
+}
+
+// ownedByClix reports whether existing is the exact flag clix registered for
+// f on an earlier registerFlags call against the same root: same reserved
+// name, same shorthand, and clix's ownership annotation. A consumer-defined
+// flag that merely happens to share the name or shorthand fails this check
+// and is still reported as a collision.
+func ownedByClix(existing *pflag.Flag, f commonFlag) bool {
+	if existing.Name != f.name || existing.Shorthand != f.shorthand {
+		return false
+	}
+	_, ok := existing.Annotations[clixOwnedAnnotation]
+	return ok
 }
 
 // checkCommandTree checks cmd and every descendant, depth first, against the
@@ -77,7 +108,11 @@ func checkCommandTree(root, cmd *cobra.Command) error {
 
 // checkReserved reports a collision between f and a flag already defined on
 // cmd's persistent (persistent=true) or local flag set. The root command is
-// named "root command"; a subcommand is named by its command path.
+// named "root command"; a subcommand is named by its command path. A flag
+// clix itself registered on an earlier call against root is recognized by
+// ownedByClix and is not a collision — that reuse is only ever legitimate on
+// root, the one command registerFlags ever writes to, so a subcommand never
+// gets this exception even if it happens to carry a matching annotation.
 func checkReserved(root, cmd *cobra.Command, persistent bool, f commonFlag) error {
 	set := cmd.Flags()
 	if persistent {
@@ -87,13 +122,19 @@ func checkReserved(root, cmd *cobra.Command, persistent bool, f commonFlag) erro
 	if cmd != root {
 		who = fmt.Sprintf("command %q", cmd.CommandPath())
 	}
-	if set.Lookup(f.name) != nil {
+	if existing := set.Lookup(f.name); existing != nil {
+		if cmd == root && ownedByClix(existing, f) {
+			return nil
+		}
 		return fmt.Errorf("clix: %s already defines flag --%s", who, f.name)
 	}
 	if f.shorthand == "" {
 		return nil
 	}
 	if other := set.ShorthandLookup(f.shorthand); other != nil {
+		if cmd == root && ownedByClix(other, f) {
+			return nil
+		}
 		return fmt.Errorf("clix: %s already defines shorthand -%s (used by --%s)", who, f.shorthand, other.Name)
 	}
 	return nil

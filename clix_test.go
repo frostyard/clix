@@ -73,6 +73,47 @@ func TestRunRegistersFlags(t *testing.T) {
 	}
 }
 
+// TestRunTwiceOnSameRootIsRepeatable pins that App.Run can execute the same
+// cobra root more than once. cobra merges a root's persistent flags into its
+// local flag set the first time it executes, so after that first run the
+// reserved flags clix registered turn up in both flag sets; a naive second
+// registerFlags call would see them as a collision against itself and refuse
+// to run. Both executions must succeed, and the flags must keep working.
+func TestRunTwiceOnSameRootIsRepeatable(t *testing.T) {
+	t.Cleanup(func() { JSONOutput, Verbose, DryRun, Silent = false, false, false, false })
+
+	var seenJSON []bool
+	cmd := &cobra.Command{
+		Use: "test",
+		RunE: func(*cobra.Command, []string) error {
+			seenJSON = append(seenJSON, JSONOutput)
+			return nil
+		},
+	}
+
+	app := &App{Version: "1.0.0"}
+
+	cmd.SetArgs(nil)
+	if err := runNoPanic(t, app, cmd); err != nil {
+		t.Fatalf("first Run() error = %v", err)
+	}
+
+	cmd.SetArgs([]string{"--json"})
+	if err := runNoPanic(t, app, cmd); err != nil {
+		t.Fatalf("second Run() error = %v", err)
+	}
+
+	if len(seenJSON) != 2 {
+		t.Fatalf("RunE ran %d times, want 2", len(seenJSON))
+	}
+	if seenJSON[0] {
+		t.Errorf("JSONOutput = true on first run, want false (no --json passed)")
+	}
+	if !seenJSON[1] {
+		t.Errorf("JSONOutput = false on second run, want true (--json passed)")
+	}
+}
+
 func TestRunContextPropagatesCancellation(t *testing.T) {
 	defer func() {
 		JSONOutput = false
