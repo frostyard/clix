@@ -55,7 +55,10 @@ PR template ──► review rubric ──► CI gates ──► corrections ─
     symbol the documentation uses fails this required check), then `make
     test-coverage-check` and `make coverage-check` — the 95.0% total
     statement-coverage floor on the `clix` package measured across every
-    test package, `scripts/check-coverage.sh`, ported from updex), *Race Detection*
+    test package, plus a zero-covered-function guard that fails and names
+    any production function `go tool cover -func` reports at 0.0% even when
+    the aggregate clears the floor (`scripts/check-coverage.sh`, ported from
+    updex), *Race Detection*
     (`go test -race ./...`), *Verify* (`go mod tidy` drift, `go vet`,
     `gofmt`) — `make check` (fmt → lint → test → test-coverage-check →
     coverage-check) reproduces the local subset.
@@ -81,9 +84,12 @@ PR template ──► review rubric ──► CI gates ──► corrections ─
      `scripts/check-coverage.sh` as an explicit argument, so an inherited
      `COVERAGE_MIN` in the environment cannot relax it; the script's
      `COVERAGE_MIN` (or `95.0`) default applies only to an ad hoc direct
-     invocation with no explicit floor. There is no coverage service, and
-     `make test-cover` still produces a local `coverage.html` for inspection.
-     The floor may tighten, never loosen.
+     invocation with no explicit floor. Independently of the aggregate floor,
+     the same script also fails when `go tool cover -func` reports any
+     non-`total:` function at 0.0% — an aggregate at or above the floor does
+     not by itself prove every production function was exercised. There is
+     no coverage service, and `make test-cover` still produces a local
+     `coverage.html` for inspection. The floor may tighten, never loosen.
 - **Learn** — corrections land in
   [.memory/corrections.jsonl](../../.memory/README.md) (append-only,
   five-field schema) and are promoted into `AGENTS.md`, docs, or skills;

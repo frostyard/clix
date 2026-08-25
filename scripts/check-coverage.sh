@@ -12,8 +12,11 @@
 #
 # The script runs `go tool cover -func=<profile>`, reads the final `total:`
 # line, prints the observed and required percentages, and exits 1 when the
-# observed value is below the floor. Any other failure (missing profile,
-# unparsable output) also exits non-zero.
+# observed value is below the floor. It also inspects every non-total
+# function row and fails, naming each one, when any function has 0.0%
+# statement coverage -- an aggregate floor above the required percentage
+# does not by itself prove every production function was exercised. Any
+# other failure (missing profile, unparsable output) also exits non-zero.
 set -eu
 
 PROFILE="${1:-coverage.out}"
@@ -31,7 +34,9 @@ case "$MIN" in
         ;;
 esac
 
-TOTAL_LINE="$(go tool cover -func="$PROFILE" | awk '$1 == "total:" { line = $0 } END { print line }')"
+FUNC_OUTPUT="$(go tool cover -func="$PROFILE")"
+
+TOTAL_LINE="$(printf '%s\n' "$FUNC_OUTPUT" | awk '$1 == "total:" { line = $0 } END { print line }')"
 if [ -z "$TOTAL_LINE" ]; then
     echo "check-coverage: no 'total:' line in 'go tool cover -func=$PROFILE' output" >&2
     exit 2
@@ -61,5 +66,14 @@ case "$BELOW" in
         exit 2
         ;;
 esac
+
+UNCOVERED_FUNCS="$(printf '%s\n' "$FUNC_OUTPUT" | awk '$1 != "total:" && $NF == "0.0%" { print }')"
+if [ -n "$UNCOVERED_FUNCS" ]; then
+    echo "check-coverage: FAIL: the following function(s) have 0.0% statement coverage:" >&2
+    printf '%s\n' "$UNCOVERED_FUNCS" | while IFS= read -r line; do
+        echo "  $line" >&2
+    done
+    exit 1
+fi
 
 echo "check-coverage: OK"

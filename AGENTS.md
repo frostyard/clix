@@ -65,7 +65,8 @@ make test            # run all tests (unit tests + tests/e2e/); writes coverage.
 make lint            # run golangci-lint (.golangci.yml; fails if not installed,
                      # warns if not the golangci-lint pin in mise.toml)
 make check           # fmt + lint + test + coverage floor (pre-commit gate)
-make coverage-check  # enforce the 95.0% statement-coverage floor on coverage.out (scripts/check-coverage.sh)
+make coverage-check  # enforce the 95.0% statement-coverage floor and reject any 0.0%-covered
+                     # function on coverage.out (scripts/check-coverage.sh)
 make test-coverage-check   # self-test scripts/check-coverage.sh with fixture profiles
 make test-cover      # tests with coverage report (coverage.html)
 make fmt             # format Go source files
