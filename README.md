@@ -175,7 +175,8 @@ Precedence is **command line > viper > default**. A flag the user passed is neve
 ```bash
 make test            # run all tests
 make lint            # run golangci-lint
-make check           # format + lint + test + coverage-checker self-test + 95% floor (pre-commit gate)
+make check           # format + lint + test + coverage-checker self-test + 95% floor
+                     # + zero-covered-function guard (pre-commit gate)
 make bump            # tag next semver with svu and push; the tag push publishes the GitHub release
 ```
 

@@ -3,10 +3,11 @@
 #
 # Usage: scripts/test-coverage-check.sh
 #
-# Builds two synthetic Go coverage profiles in a temporary directory -- one
-# whose total statement coverage is above a floor and one below it --
-# and asserts that check-coverage.sh exits 0 for the first and 1 for the
-# second. Exits 0 when both assertions hold.
+# Builds synthetic Go coverage profiles in a temporary directory -- one
+# whose total statement coverage is above a floor, one below it, and one
+# whose aggregate is above the floor but leaves a function entirely
+# uncovered -- and asserts check-coverage.sh's exit code and diagnostics
+# for each. Exits 0 when every assertion holds.
 set -eu
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -48,6 +49,39 @@ cat > "$TMP/below.out" <<EOF_PROFILE
 mode: atomic
 $SRC:3.20,8.2 5 1
 $SRC:8.2,14.2 5 0
+EOF_PROFILE
+
+# A second fixture, kept separate from SRC so `go tool cover -func` does not
+# also attribute its unreferenced uncovered() to the above/below profiles:
+# covered() is fully executed (10/10) but uncovered() is entirely
+# unexecuted, so the aggregate is 10/11 (90.9%) -- above an 80.0 floor --
+# while uncovered() itself reports 0.0% function coverage.
+ZERO_FUNC_SRC="$TMP/zero_func_fixture.go"
+cat > "$ZERO_FUNC_SRC" <<'GO'
+package fixture
+
+func covered() int {
+	a := 1
+	b := 2
+	c := 3
+	d := 4
+	e := 5
+	f := 6
+	g := 7
+	h := 8
+	i := 9
+	return a + b + c + d + e + f + g + h + i
+}
+
+func uncovered() int {
+	return 0
+}
+GO
+
+cat > "$TMP/zero-func.out" <<EOF_PROFILE
+mode: atomic
+$ZERO_FUNC_SRC:3.20,14.1 10 1
+$ZERO_FUNC_SRC:16.22,18.1 1 0
 EOF_PROFILE
 
 failures=0
@@ -92,6 +126,25 @@ else
         echo "PASS: explicit floor argument took precedence over COVERAGE_MIN"
     else
         echo "FAIL: explicit floor rejected below-floor profile with unexpected exit $status"
+        failures=$((failures + 1))
+    fi
+fi
+
+echo "--- expect exit 1: aggregate above floor but a function has 0.0% coverage"
+if "$CHECK" "$TMP/zero-func.out" 80.0 2>"$TMP/zero-func.err"; then
+    echo "FAIL: profile with an uncovered function accepted despite the aggregate floor being met"
+    failures=$((failures + 1))
+else
+    status=$?
+    if [ "$status" -eq 1 ]; then
+        if grep -q "uncovered" "$TMP/zero-func.err"; then
+            echo "PASS: profile with an uncovered function rejected with exit 1 naming 'uncovered'"
+        else
+            echo "FAIL: check-coverage rejected the profile but did not name the uncovered function"
+            failures=$((failures + 1))
+        fi
+    else
+        echo "FAIL: profile with an uncovered function rejected with unexpected exit $status"
         failures=$((failures + 1))
     fi
 fi
