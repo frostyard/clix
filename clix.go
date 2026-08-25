@@ -50,9 +50,11 @@ func (a *App) VersionString() string {
 // via fang.Execute with the formatted version string and signal handling.
 //
 // The flags --json, --verbose/-v, --dry-run/-n, and --silent/-s are reserved
-// by clix on the root command. If cmd already defines one of those names or
-// shorthands, Run returns an error naming the collision before executing
-// anything, rather than letting pflag panic.
+// by clix across the entire command tree: the check covers the root command
+// and every descendant at any depth, on both persistent and local flag sets.
+// If cmd or any subcommand already defines one of those names or shorthands,
+// Run returns an error naming the collision before executing anything,
+// rather than letting pflag panic.
 //
 // Run is a thin wrapper around RunContext using context.Background(); use
 // RunContext directly when the caller needs to bound execution with a
@@ -71,9 +73,11 @@ func (a *App) Run(cmd *cobra.Command) error {
 // OS signal handling fang.Execute installs for SIGINT/SIGTERM.
 //
 // The flags --json, --verbose/-v, --dry-run/-n, and --silent/-s are reserved
-// by clix on the root command. If cmd already defines one of those names or
-// shorthands, RunContext returns an error naming the collision before
-// executing anything, rather than letting pflag panic.
+// by clix across the entire command tree: the check covers the root command
+// and every descendant at any depth, on both persistent and local flag sets.
+// If cmd or any subcommand already defines one of those names or shorthands,
+// RunContext returns an error naming the collision before executing
+// anything, rather than letting pflag panic.
 func (a *App) RunContext(ctx context.Context, cmd *cobra.Command) error {
 	if cmd == nil {
 		return fmt.Errorf("clix: Run: root command is nil")
