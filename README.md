@@ -99,6 +99,8 @@ Flag values are available as package-level variables: `clix.JSONOutput`, `clix.V
 
 These four flags — `--json`, `--verbose`/`-v`, `--dry-run`/`-n`, and `--silent`/`-s` — are reserved by clix across the whole command tree: if your root command *or any subcommand at any depth* already defines one of those names or shorthands (persistent or local), `App.Run()` returns an error naming the command and the collision instead of panicking, before anything executes. (cobra merges each command's local flags with its ancestors' persistent flags at parse time, so a subcommand shorthand collision would otherwise panic only when that subcommand runs, and a name collision would silently shadow clix's flag.)
 
+Calling `App.Run()` or `App.RunContext()` more than once against the same root command is safe: the flags clix registered on an earlier call are recognized and reused rather than re-registered, so a test or a REPL-style caller can execute the same root repeatedly without tripping its own reserved-flag collision check. A consumer-defined flag that collides with a reserved name or shorthand is still rejected exactly as on the first call.
+
 ## RunContext
 
 `App.Run(cmd)` is a thin wrapper around `App.RunContext(context.Background(), cmd)`. Call `RunContext` directly when you want to bound execution with a deadline/timeout or let a supervising process (a test, a parent command, an orchestrator) cancel the run instead of relying solely on the `SIGINT`/`SIGTERM` handling `Run` installs:
