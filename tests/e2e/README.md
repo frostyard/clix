@@ -22,7 +22,11 @@ make test                    # everything, e2e included
 ```
 
 CI runs it inside the `Unit Tests` and `Race Detection` jobs of
-[`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) — both run
-`go test ./...`, which includes this package. This README is the
-discoverable e2e entry point named by
-[ADR-0001](../../docs/adr/0001-acmm-conformance-via-canonical-aliases.md).
+[`.github/workflows/ci.yml`](../../.github/workflows/ci.yml), which run
+different commands. `Unit Tests` runs the repository gate `make ci`, whose
+test step is the coverage-instrumented
+`go test -v -coverprofile=coverage.out -covermode=atomic -coverpkg=github.com/frostyard/clix ./...`
+defined by the [`test` target](../../Makefile); `Race Detection` runs
+`go test -race ./...` directly. Both invocations end in `./...`, so both
+include this package. This README is the discoverable e2e entry point named
+by [ADR-0001](../../docs/adr/0001-acmm-conformance-via-canonical-aliases.md).
