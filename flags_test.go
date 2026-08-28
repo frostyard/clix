@@ -237,6 +237,28 @@ func TestBindViper_FromSubcommandPreRun(t *testing.T) {
 	}
 }
 
+// TestBindViper_NilCommand pins the nil-command contract: BindViper returns a
+// deterministic clix-namespaced error instead of panicking when a mis-wired
+// hook hands it no command.
+func TestBindViper_NilCommand(t *testing.T) {
+	viper.Reset()
+	t.Cleanup(viper.Reset)
+
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("BindViper(nil) panicked: %v", r)
+		}
+	}()
+
+	err := BindViper(nil)
+	if err == nil {
+		t.Fatal("BindViper(nil) = nil error, want an error reporting the nil command")
+	}
+	if got, want := err.Error(), "clix: BindViper: command is nil"; got != want {
+		t.Errorf("BindViper(nil) error = %q, want %q", got, want)
+	}
+}
+
 // TestBindViper_UnregisteredFlagError pins the clix-namespaced error for a
 // command tree App.Run has not registered the flags on.
 func TestBindViper_UnregisteredFlagError(t *testing.T) {

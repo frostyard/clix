@@ -147,8 +147,13 @@ func checkReserved(root, cmd *cobra.Command, persistent bool, f commonFlag) erro
 // flag through that command's local, persistent, and inherited flag sets — it
 // is safe to call from any command in the tree, root or subcommand. It returns
 // a clix-namespaced error when a flag is not registered on cmd, which means
-// App.Run has not registered the flags on the root command yet.
+// App.Run has not registered the flags on the root command yet. A nil cmd
+// returns `clix: BindViper: command is nil` rather than panicking, so a
+// mis-wired PersistentPreRunE surfaces as an ordinary error.
 func BindViper(cmd *cobra.Command) error {
+	if cmd == nil {
+		return fmt.Errorf("clix: BindViper: command is nil")
+	}
 	for _, f := range commonFlags() {
 		name := f.name
 		set, flag := lookupFlag(cmd, name)
