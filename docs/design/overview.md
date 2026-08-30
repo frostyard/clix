@@ -187,6 +187,7 @@ The Makefile lint target fails when `mise.toml` pins no `golangci-lint` or the b
 
 ```bash
 make test            # run all tests
+make test-race       # run all tests under the race detector (mirrors the CI Race Detection job)
 make lint            # golangci-lint (fails with an install hint if missing)
 make check           # fmt + lint + test + coverage floor (pre-commit gate)
 make test-cover      # tests with coverage report (coverage.html)
