@@ -1,4 +1,4 @@
-.PHONY: all clean fmt lint lint-version-check verify test test-cover coverage-check test-coverage-check release-check tidy check ci bump help
+.PHONY: all clean fmt lint lint-version-check verify test test-race test-cover coverage-check test-coverage-check release-check tidy check ci bump help
 
 # Go commands
 GO := go
@@ -50,6 +50,10 @@ lint-version-check:
 test:
 	$(GO) test -v -coverprofile=coverage.out -covermode=atomic -coverpkg=github.com/frostyard/clix ./...
 
+## test-race: Run tests under the race detector (mirrors the CI Race Detection job)
+test-race:
+	$(GO) test -race ./...
+
 ## coverage-check: Enforce the 95.0% total statement-coverage floor on coverage.out (scripts/check-coverage.sh)
 coverage-check:
 	./scripts/check-coverage.sh coverage.out 95.0
@@ -99,10 +103,12 @@ verify:
 ## check: Run fmt, lint, test, and the coverage floor
 check: fmt lint test test-coverage-check coverage-check
 
-## ci: Credential-free gate for CI (core ADR-0022/ADR-0043): verify, then this repository's coverage floor
+## ci: Credential-free gate for CI (core ADR-0022/ADR-0043): verify, the race detector, then this repository's coverage floor
 ci:
 	@echo "==> ci: verify"
 	@$(MAKE) --no-print-directory verify
+	@echo "==> ci: race detector"
+	@$(MAKE) --no-print-directory test-race
 	@echo "==> ci: tests with coverage"
 	@$(MAKE) --no-print-directory test
 	@echo "==> ci: self-test the coverage floor script"

@@ -62,6 +62,7 @@ throwaway consumer program with `go build`).
 
 ```bash
 make test            # run all tests (unit tests + tests/e2e/); writes coverage.out for the clix package
+make test-race       # run all tests under the race detector (mirrors the CI Race Detection job)
 make lint            # run golangci-lint (.golangci.yml; fails if not installed,
                      # warns if not the golangci-lint pin in mise.toml)
 make check           # fmt + lint + test + coverage floor (pre-commit gate)
@@ -82,7 +83,8 @@ node scripts/check-docs.mjs     # docs-integrity gate (index, links, aliases, CI
 Run `make check` before opening a pull request; `make verify` is the
 credential-free, non-mutating gate a read-only reviewer runs and `make ci` is
 what CI runs — `make verify` / `make check` / `make ci` is core ADR-0043's
-gate triad — and CI additionally runs the docs gate.
+gate triad — and CI additionally runs the docs gate, the security scan
+(`govulncheck ./...`), and release config validation.
 
 ## Architecture
 
