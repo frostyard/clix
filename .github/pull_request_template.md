@@ -12,8 +12,11 @@ closes. -->
 
 <!-- The build gate from AGENTS.md — run before opening the PR. -->
 
-- [ ] `make check` — `gofmt`, `golangci-lint run` (`.golangci.yml`),
-      `go test -v ./...` (unit tests plus `tests/e2e/`)
+- [ ] `make check` — the `fmt`, `lint`, `test`, `test-coverage-check`, and
+      `coverage-check` targets: `gofmt -w`, `golangci-lint run`
+      (`.golangci.yml`) at the `mise.toml` pin, the coverage-instrumented
+      `go test` over `./...` (unit tests plus `tests/e2e/`), the
+      `check-coverage.sh` self-test, and the 95.0% statement-coverage floor
 - [ ] `go mod tidy` leaves `go.mod`/`go.sum` unchanged; `go vet ./...` clean
       (the CI `verify` job)
 - [ ] New or changed behavior has focused tests, including failure paths;
