@@ -114,6 +114,109 @@ func TestRunTwiceOnSameRootIsRepeatable(t *testing.T) {
 	}
 }
 
+// TestRunTwiceOnSameRootJSONTrueThenFalseIsolatesState pins the fix for a
+// reliability gap: a --json invocation must not leak into a later
+// invocation on the same root that passes no --json flag. Before the fix,
+// registerFlags reused the earlier invocation's *pflag.Flag without
+// resetting its value or Changed bit, so the second invocation observed
+// JSONOutput == true even though it never asked for JSON output.
+func TestRunTwiceOnSameRootJSONTrueThenFalseIsolatesState(t *testing.T) {
+	t.Cleanup(func() { JSONOutput, Verbose, DryRun, Silent = false, false, false, false })
+
+	var seenJSON []bool
+	cmd := &cobra.Command{
+		Use: "test",
+		RunE: func(*cobra.Command, []string) error {
+			seenJSON = append(seenJSON, JSONOutput)
+			return nil
+		},
+	}
+
+	app := &App{Version: "1.0.0"}
+
+	cmd.SetArgs([]string{"--json"})
+	if err := runNoPanic(t, app, cmd); err != nil {
+		t.Fatalf("first Run() error = %v", err)
+	}
+
+	cmd.SetArgs(nil)
+	if err := runNoPanic(t, app, cmd); err != nil {
+		t.Fatalf("second Run() error = %v", err)
+	}
+
+	if len(seenJSON) != 2 {
+		t.Fatalf("RunE ran %d times, want 2", len(seenJSON))
+	}
+	if !seenJSON[0] {
+		t.Errorf("JSONOutput = false on first run, want true (--json passed)")
+	}
+	if seenJSON[1] {
+		t.Errorf("JSONOutput = true on second run, want false (no --json passed); stale state leaked across invocations")
+	}
+	if got := cmd.PersistentFlags().Lookup("json").Changed; got {
+		t.Errorf("--json Changed = true after the second run, want false: stale Changed leaked across invocations")
+	}
+}
+
+// TestRunTwice_StaleChangedDoesNotSuppressViper pins that a stale Changed bit
+// carried over from an earlier invocation cannot suppress a later
+// invocation's viper-provided value, while an explicit flag on the current
+// invocation still wins over viper (the command-line-over-viper precedence
+// BindViper documents).
+func TestRunTwice_StaleChangedDoesNotSuppressViper(t *testing.T) {
+	restoreFlagState(t)
+	writeViperConfig(t, "json: true\n")
+
+	var seenJSON []bool
+	cmd := &cobra.Command{
+		Use: "test",
+		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+			return BindViper(cmd)
+		},
+		RunE: func(*cobra.Command, []string) error {
+			seenJSON = append(seenJSON, JSONOutput)
+			return nil
+		},
+	}
+
+	app := &App{Version: "1.0.0"}
+
+	// First invocation: an explicit --json=false beats viper's json: true
+	// and leaves the flag Changed.
+	cmd.SetArgs([]string{"--json=false"})
+	if err := runNoPanic(t, app, cmd); err != nil {
+		t.Fatalf("first Run() error = %v", err)
+	}
+
+	// Second invocation: no --json flag at all. Without resetting the stale
+	// Changed=true left by the first invocation, BindViper's guard would
+	// wrongly treat this invocation as having an explicit flag too,
+	// suppressing viper's json: true.
+	cmd.SetArgs(nil)
+	if err := runNoPanic(t, app, cmd); err != nil {
+		t.Fatalf("second Run() error = %v", err)
+	}
+
+	// Third invocation: an explicit --json=false must still beat viper.
+	cmd.SetArgs([]string{"--json=false"})
+	if err := runNoPanic(t, app, cmd); err != nil {
+		t.Fatalf("third Run() error = %v", err)
+	}
+
+	if len(seenJSON) != 3 {
+		t.Fatalf("RunE ran %d times, want 3", len(seenJSON))
+	}
+	if seenJSON[0] {
+		t.Errorf("JSONOutput = true on first run, want false (explicit --json=false beats viper)")
+	}
+	if !seenJSON[1] {
+		t.Errorf("JSONOutput = false on second run, want true (viper's json: true should apply once stale Changed is reset)")
+	}
+	if seenJSON[2] {
+		t.Errorf("JSONOutput = true on third run, want false (explicit --json=false beats viper again)")
+	}
+}
+
 func TestRunContextPropagatesCancellation(t *testing.T) {
 	defer func() {
 		JSONOutput = false
