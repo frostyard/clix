@@ -44,7 +44,7 @@ Apply the machine-readable controls in
 4. If the diff changes exported API, flags, or output behavior, verify
    `README.md` and [docs/design/overview.md](../../docs/design/overview.md)
    changed alongside the code, and that the repo-local ADRs still hold. If
-   it touches `.github/workflows/**`, `.goreleaser.yaml`, or `.svu.yaml`,
+   it touches `.github/workflows/**`, `.goreleaser.yaml`, or `.svu.yml`,
    treat it as high risk per `policies/agent-governance.json`: actions stay
    SHA-pinned, permissions least-privilege, the release stays library-shaped
    (no builds, no packages).

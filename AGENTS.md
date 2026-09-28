@@ -136,7 +136,7 @@ versions and the release changelog groups by. See
 ## Release
 
 `make bump` runs `make check`, refuses a dirty tree, tags the next semantic
-version with `svu next` (`.svu.yaml`: `v` prefix, conventional-commit
+version with `svu next` (`.svu.yml`: `v` prefix, conventional-commit
 derived, `v0` allowed), and pushes the tag. The tag push runs
 `.github/workflows/release.yml`, which runs GoReleaser Pro against
 `.goreleaser.yaml`: builds are skipped (clix is a library — no binaries,
@@ -145,7 +145,7 @@ changelog grouped by conventional-commit type. Consumers upgrade with
 `go get github.com/frostyard/clix@<tag>`. Never run `make bump`, `gh release`,
 or push a tag as an agent — releasing is a maintainer act
 (`.claude/settings.json` denies `gh release`; `policies/agent-governance.json`
-marks `.goreleaser.yaml`, `.svu.yaml`, and `.github/workflows/release.yml`
+marks `.goreleaser.yaml`, `.svu.yml`, and `.github/workflows/release.yml`
 review-required at high risk).
 
 ## Documentation
@@ -227,7 +227,7 @@ alongside `AGENTS.md`, `.agents/skills/`, and `docs/README.md` — all four
 are real content, never aliases. Deny by default; read, write, and run-tests
 allowed; issues, pull requests, and follow-ups review-required; workflows
 (`.github/workflows/**`) and the release configuration (`.goreleaser.yaml`,
-`.svu.yaml`, `.github/workflows/release.yml`) are review-required at high
+`.svu.yml`, `.github/workflows/release.yml`) are review-required at high
 risk. Change it only alongside the matching ADR or design change.
 
 ## Org-wide decisions

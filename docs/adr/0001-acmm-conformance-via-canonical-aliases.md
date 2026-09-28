@@ -25,7 +25,7 @@ by earlier decisions: `AGENTS.md` with `CLAUDE.md`, `GEMINI.md`, and
 ([core ADR-0026](https://github.com/frostyard/core/blob/main/docs/adr/0026-distribute-core-skills-via-sync-prs.md)),
 the four-category `docs/` tree
 ([core ADR-0025](https://github.com/frostyard/core/blob/main/docs/adr/0025-consolidate-repository-docs-into-docs.md)),
-and `.svu.yaml` for `make bump`
+and `.svu.yml` for `make bump`
 ([core ADR-0012](https://github.com/frostyard/core/blob/main/docs/adr/0012-svu-versioning-and-rolling-dev-prerelease.md))
 — but nothing published the tags `make bump` pushed. frostyard/core solved
 the identical criteria set with
@@ -118,7 +118,7 @@ Rules:
 - `scripts/check-docs.mjs` fails CI on any broken alias, unindexed doc, or
   dead relative link, making the lattice self-guarding.
 - `make bump` now has a consumer: the tag it pushes produces a GitHub release
-  with grouped notes. `.goreleaser.yaml`, `.svu.yaml`, and
+  with grouped notes. `.goreleaser.yaml`, `.svu.yml`, and
   `.github/workflows/release.yml` are a review-required high-risk boundary
   in `policies/agent-governance.json`.
 - The e2e suite builds a binary with the `go` toolchain on `PATH` inside
