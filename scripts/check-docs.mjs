@@ -110,6 +110,28 @@ if (workflowJobs.join("\n") !== documentedJobs.join("\n")) {
   );
 }
 
+// ---- 5b. Test-job command: the docs quote the command the test job runs. ----
+// The Unit Tests job's last `run:` is what actually executes the gate. Requiring
+// that literal string inside overview.md's ## CI section means a future change to
+// how the job is invoked forces the documentation to change with it.
+const testJobStart = jobsSection.search(/^  test:[ \t]*$/m);
+const testJobBody = jobsSection.slice(testJobStart);
+const nextJobOffset = testJobBody.slice(1).search(/^  [a-z][a-z0-9-]*:[ \t]*$/m);
+const testJob = nextJobOffset === -1 ? testJobBody : testJobBody.slice(0, nextJobOffset + 1);
+const testRuns = [...testJob.matchAll(/^ +run: *(.*)$/gm)].map((match) => match[1].trim());
+const testCommand = testRuns.at(-1);
+if (testJobStart === -1 || !testCommand || testCommand === "|" || testCommand === ">") {
+  failures.push(
+    "ci test command: could not read a single-line `run:` command from the test: job in .github/workflows/ci.yml",
+  );
+} else if (!ciSection.includes(testCommand)) {
+  failures.push(
+    `ci test command: .github/workflows/ci.yml runs \`${testCommand}\` in its test: job, but that command string ` +
+      "does not appear in the ## CI section of docs/design/overview.md — update the `| **test** |` row of " +
+      "docs/design/overview.md so the documented command matches the workflow",
+  );
+}
+
 // ---- 6. Release-config event matrix: forks stay secret-independent. ----
 const forkCondition =
   "if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository";

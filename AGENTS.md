@@ -208,8 +208,8 @@ lint (the golangci-lint release pinned in
 [`mise.toml`](mise.toml) with its checksums in [`mise.lock`](mise.lock),
 installed by `jdx/mise-action`, with `.golangci.yml`), security scan (`govulncheck ./...`,
 pinned at `golang.org/x/vuln/cmd/govulncheck@v1.7.0`, failing on any
-reachable vulnerability in the module graph), unit tests (`go test -v ./...`,
-including `tests/e2e/`), race-detector tests, verification (`go mod tidy`
+reachable vulnerability in the module graph), unit tests (the `Unit Tests` job runs the
+repository gate `make ci`, which covers `tests/e2e/` too), race-detector tests, verification (`go mod tidy`
 cleanliness, `go vet`, `gofmt`), docs integrity
 (`scripts/check-docs.mjs`), and release config (`goreleaser check` over
 `.goreleaser.yaml`, so a broken release configuration fails before merge
