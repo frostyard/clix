@@ -40,7 +40,7 @@ improvising, whichever agent you are:
 
 ### Prerequisites
 
-- **Go 1.26.7** (`go.mod`'s `toolchain go1.26.7` line is the only Go pin;
+- **Go 1.26.10** (`go.mod`'s `toolchain go1.26.10` line is the only Go pin;
   CI, `mise`, and Snowcat workers all read it)
 - `make`
 - [`mise`](https://mise.jdx.dev/) to provision every other pinned tool:
