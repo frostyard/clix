@@ -2,7 +2,7 @@ module github.com/frostyard/clix
 
 go 1.26.6
 
-toolchain go1.26.7
+toolchain go1.26.10
 
 require (
 	charm.land/fang/v2 v2.0.1
