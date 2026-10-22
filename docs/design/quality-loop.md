@@ -110,7 +110,7 @@ PR template ──► review rubric ──► CI gates ──► corrections ─
 ## Release flow
 
 `make bump` runs `make check`, refuses a dirty tree, tags the next semantic
-version with `svu next` (`.svu.yaml`: `v` prefix, conventional-commit
+version with `svu next` (`.svu.yml`: `v` prefix, conventional-commit
 derived, `v0` allowed), and pushes the tag. The tag push runs
 [.github/workflows/release.yml](../../.github/workflows/release.yml), which
 runs GoReleaser Pro against [.goreleaser.yaml](../../.goreleaser.yaml):

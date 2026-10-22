@@ -183,7 +183,7 @@ The Makefile lint target fails when `mise.toml` pins no `golangci-lint` or the b
 
 ## Release
 
-`make bump` runs `make check`, refuses a dirty tree, tags the next semantic version with `svu next` (`.svu.yaml`: `v` prefix, conventional-commit derived), and pushes the tag. The tag push runs `.github/workflows/release.yml`, which runs GoReleaser Pro against `.goreleaser.yaml` with `builds: skip: true` — no binaries, archives, or packages, only a GitHub release whose notes are grouped by conventional-commit type. Consumers upgrade with `go get github.com/frostyard/clix@<tag>`. Rationale and the protected-boundary status of these files: [ADR-0001](../adr/0001-acmm-conformance-via-canonical-aliases.md), `policies/agent-governance.json`.
+`make bump` runs `make check`, refuses a dirty tree, tags the next semantic version with `svu next` (`.svu.yml`: `v` prefix, conventional-commit derived), and pushes the tag. The tag push runs `.github/workflows/release.yml`, which runs GoReleaser Pro against `.goreleaser.yaml` with `builds: skip: true` — no binaries, archives, or packages, only a GitHub release whose notes are grouped by conventional-commit type. Consumers upgrade with `go get github.com/frostyard/clix@<tag>`. Rationale and the protected-boundary status of these files: [ADR-0001](../adr/0001-acmm-conformance-via-canonical-aliases.md), `policies/agent-governance.json`.
 
 ## Development
 
