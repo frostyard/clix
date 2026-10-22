@@ -28,7 +28,7 @@ There are no subpackages or internal directories apart from the end-to-end suite
 | `charm.land/fang/v2` v2.0.1 | Command execution with version injection and signal handling |
 | `spf13/cobra` v1.10.2 | Command tree and flag parsing |
 | `spf13/viper` v1.21.0 | Optional config binding via `BindViper()` |
-| `frostyard/std` v0.2.2 (`reporter` subpackage) | `Reporter` interface and concrete implementations (`TextReporter`, `JSONReporter`, `NoopReporter`) |
+| `frostyard/std` v0.3.0 (`reporter` subpackage) | `Reporter` interface and concrete implementations (`TextReporter`, `JSONReporter`, `NoopReporter`) |
 
 ### Data Flow
 
@@ -116,7 +116,7 @@ if written {
 
 Silent always wins over JSON — this is explicitly tested.
 
-Text reporter writes to stderr to keep stdout clean for data/JSON output. Both destinations are resolved through the `Stdout` / `Stderr` seams in `output.go` at the time `NewReporter()` is called.
+Text reporter writes to stderr to keep stdout clean for data/JSON output. Both destinations are resolved through the `Stdout` / `Stderr` seams in `output.go` at the time `NewReporter()` is called. Since std v0.3.0 both reporters latch the first writer error (or short write) and drop every later event, and a typed-nil writer (for example a nil `*bytes.Buffer` assigned to a seam) is treated as `io.Discard` instead of panicking.
 
 ## Key Patterns
 
