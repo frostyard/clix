@@ -25,7 +25,7 @@ pass.
 | Docs-integrity gate green | `node scripts/check-docs.mjs` passes: every doc indexed, every relative link resolving, every symlink alias intact, and the documented CI job inventory matches the workflow (thresholds in `.coverage-thresholds.json`). |
 | Aliases untouched | Conformance aliases ([ADR-0001](../adr/0001-acmm-conformance-via-canonical-aliases.md)) are not edited directly; canonical targets are. |
 | Conventional title | The PR title (or lone commit subject) is `type(scope): summary`; the org squash-merges and svu derives the next version from it. |
-| Release and workflow boundaries | Changes under `.github/workflows/**`, `.goreleaser.yaml`, or `.svu.yaml` are reviewed at high risk per [`policies/agent-governance.json`](../../policies/agent-governance.json): actions stay SHA-pinned, permissions least-privilege, the release flow stays library-shaped (no builds, no packages). |
+| Release and workflow boundaries | Changes under `.github/workflows/**`, `.goreleaser.yaml`, or `.svu.yml` are reviewed at high risk per [`policies/agent-governance.json`](../../policies/agent-governance.json): actions stay SHA-pinned, permissions least-privilege, the release flow stays library-shaped (no builds, no packages). |
 | Agent limits respected | The PR was not merged, approved, or released by the agent that authored it; mechanically backed by `.claude/settings.json` and `policies/agent-governance.json`. |
 
 ## Rules

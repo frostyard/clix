@@ -55,13 +55,17 @@ const clixOwnedAnnotation = "clix:owned"
 // registerFlags is safe to call again on the same root: a flag it registered
 // on an earlier call is recognized by its ownership annotation and reused
 // rather than re-registered or reported as a collision, so App.Run and
-// App.RunContext can execute the same root command more than once.
+// App.RunContext can execute the same root command more than once. A reused
+// flag is reset to its declared default and its Changed bit cleared first,
+// so a value or an explicit-flag marker left over from an earlier invocation
+// cannot leak into this one.
 func registerFlags(cmd *cobra.Command) error {
 	if err := checkCommandTree(cmd, cmd); err != nil {
 		return err
 	}
 	for _, f := range commonFlags() {
 		if existing := cmd.PersistentFlags().Lookup(f.name); existing != nil && ownedByClix(existing, f) {
+			resetOwnedFlag(existing)
 			continue
 		}
 		if f.shorthand == "" {
@@ -72,6 +76,22 @@ func registerFlags(cmd *cobra.Command) error {
 		_ = cmd.PersistentFlags().SetAnnotation(f.name, clixOwnedAnnotation, []string{"true"})
 	}
 	return nil
+}
+
+// resetOwnedFlag restores a clix-owned flag reused across repeated
+// App.Run/App.RunContext calls on the same root to its declared default
+// value — which also resets the bound package-level bool, since pflag's
+// boolValue is the *bool target itself — and clears Changed. Without this,
+// a flag the previous invocation set (explicitly or via BindViper's
+// write-back) would carry both its value and its Changed bit into this
+// invocation: cobra's parser only ever sets Changed to true for a flag this
+// invocation's arguments name, it never clears a stale true from before, so
+// BindViper's command-line-over-viper precedence (which trusts Changed to
+// mean "this invocation set it explicitly") would wrongly treat the new
+// invocation as having an explicit flag and skip viper's value.
+func resetOwnedFlag(existing *pflag.Flag) {
+	_ = existing.Value.Set(existing.DefValue)
+	existing.Changed = false
 }
 
 // ownedByClix reports whether existing is the exact flag clix registered for
