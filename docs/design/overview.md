@@ -6,11 +6,13 @@
 
 ## Architecture
 
-Single flat package (`package clix`) with four source files and matching test files:
+Single flat package (`package clix`) with five source files and matching test files:
 
 ```
 clix.go          — App struct, Run(), RunContext(), VersionString()
 clix_test.go
+errors.go        — errorHandler(), the fang error handler RunContext installs
+errors_test.go
 flags.go         — Package-level flag variables, registerFlags(), BindViper()
 flags_test.go
 output.go        — OutputJSON(), OutputJSONError(), Stdout/Stderr writer seams
@@ -25,7 +27,10 @@ There are no subpackages or internal directories apart from the end-to-end suite
 
 | Direct dependency | Role |
 |---|---|
-| `charm.land/fang/v2` v2.0.1 | Command execution with version injection and signal handling |
+| `charm.land/fang/v2` v2.0.1 | Command execution with version injection, signal handling, and the `Styles` the error handler renders with |
+| `charm.land/lipgloss/v2` v2.0.6 | The style type behind fang's `Styles`; joins the `Try --help for usage.` hint |
+| `github.com/charmbracelet/colorprofile` v0.4.3 | fang's writer wrapper, unwrapped to see the real file behind it |
+| `github.com/charmbracelet/x/term` v0.2.2 | `IsTerminal`, the same terminal check fang's default error handler uses |
 | `spf13/cobra` v1.10.2 | Command tree and flag parsing |
 | `spf13/viper` v1.21.0 | Optional config binding via `BindViper()` |
 | `frostyard/std` v0.3.0 (`reporter` subpackage) | `Reporter` interface and concrete implementations (`TextReporter`, `JSONReporter`, `NoopReporter`) |
@@ -38,6 +43,7 @@ main() creates App{} with build-time metadata
        ├─ reject a nil root command
        ├─ registerFlags(cmd)          ← adds --json, --verbose, --dry-run, --silent as persistent flags
        └─ fang.Execute(cmd, ...)      ← runs the cobra command tree with version + signal handling
+            └─ on error: errorHandler()  ← clix's rendering (errors.go), fang's own when output is not a terminal
             └─ Command handlers use:
                  ├─ clix.OutputJSON() / clix.OutputJSONError()   ← structured JSON to stdout
                  └─ clix.NewReporter()                            ← progress reporting
@@ -66,6 +72,22 @@ main() creates App{} with build-time metadata
 4. Delegates to `fang.Execute()` with version string and `SIGINT`/`SIGTERM` signal handling
 
 **`App.RunContext(ctx, cmd)`** is `Run` with a caller-supplied `context.Context`: `Run(cmd)` is implemented as `RunContext(context.Background(), cmd)`, and `RunContext` performs the same nil-check, `defaults()`, and `registerFlags(cmd)` steps before calling `fang.Execute(ctx, cmd, ...)` with the given `ctx` instead of a hardcoded background context (the `SIGINT`/`SIGTERM` handling `fang.WithNotifySignal` installs is unchanged). Use it to bound a run with a deadline/timeout or let a supervising process (a test, a parent command, an orchestrator) cancel execution; `fang.Execute` threads `ctx` onto `cmd.Context()`, so a `RunE` observes cancellation via `cmd.Context().Err()`. Pinned by `TestRunContextPropagatesCancellation` in `clix_test.go`.
+
+### errors.go — Error Rendering
+
+`RunContext` passes `fang.WithErrorHandler(errorHandler)` to `fang.Execute`, so clix renders a command error instead of fang's default handler.
+
+**What fang v2.0.1 does** (`help.go`, `DefaultErrorHandler`; styles in `theme.go`, `makeStyles`): it prints `err.Error()+"."` through `Styles.ErrorText`, a style that carries `MarginLeft(2)`, `Width(width()-4)` and `Transform(titleFirstWord)`; then a blank line; then, only for a usage error, the `Try --help for usage.` hint. Its plain `err.Error()` path runs only for a `term.File` that is not a terminal, and its comment states the intent: a non-tty gets the error "without any styling". `fang.Execute` always passes a `*colorprofile.Writer` around `root.ErrOrStderr()`, and that type is no `term.File`, so fang's own check never sees the real file: before this handler a journal or a pipe got the whole styled block, with only the ANSI sequences stripped. lipgloss v2 keeps a hard `\n` when it wraps a line, so a joined error already reached the terminal on separate lines with fang v2.0.1 (the one-line fold in issue #107 came from fang v1.0.0); the remaining v2 defects are the capitalized flag and the period fang appends even when the text already ends in one.
+
+**`errorHandler(w, styles, err)`** (unexported) then does this:
+
+- **Which rendering.** `styledErrorWriter(w)` mirrors fang's rule, after unwrapping a `*colorprofile.Writer` to its `Forward`: a writer that is no file at all (a `bytes.Buffer`, a `*colorprofile.Writer` over a buffer) takes the styled path, exactly as fang does, and a `term.File` takes it only when `term.IsTerminal(f.Fd())` is true.
+- **Non-terminal path.** Without the styled path the handler writes `err.Error()` and one newline to `w`, the writer fang passed (the colorprofile writer, so it still strips escape sequences): no `ERROR` header, no style, no closing period, no usage hint. This is the plain path fang documents but cannot reach. It changes what a pipe, a journal (`updex` under the systemd timer) or a redirected stderr prints, compared with clix v0.4.0 and `main`, which printed the styled block there.
+- **Styled path.** It prints `Styles.ErrorHeader`, then one line per line of `err.Error()` (`errorLines`: a CRLF line end becomes `\n`, so no carriage return stays in a line; newlines at the start and the end are dropped, so a trailing newline adds no blank line; an empty line inside the text stays, unstyled, as the blank line between two paragraphs), each non-empty line through `Styles.ErrorText` so the width wrap applies per line and the lines stay separate. Only the first line keeps `titleFirstWord`'s capitalization; a first word that starts with `-` is a flag, so that line renders with `UnsetTransform` and `--clear cannot be combined with --other` keeps its lower case. Then fang's blank line, its `Try --help for usage.` hint for a usage error (`lipgloss.JoinHorizontal` of the same three styles), and a closing blank line.
+- **Closing period.** `withClosingPeriod` adds `.` only when the last line does not already end in `.`, `!`, `?` or `:`, and it runs on the text before the style pads the line, so the period lands inside the styled text. An empty error text renders as fang's bare `.`.
+- **Usage-error rule.** `isUsageError` is a copy of fang's unexported predicate — a message that starts with `flag needs an argument:`, `unknown flag:`, `unknown shorthand flag:`, `unknown command`, or `invalid argument` — with a comment naming the fang version and file. Keep it in step when fang is upgraded.
+
+Tests in `errors_test.go` take `fang.Styles` from a real `fang.Execute` call, because fang's `makeStyles` is unexported. They cover both joined errors on separate lines, the lower case flag, a one-line error byte for byte equal to `fang.DefaultErrorHandler`, each end-punctuation case (also after a trailing CRLF and a leading newline), CRLF input with no carriage return in the output and one blank line kept between two paragraphs, a usage error's hint, no hint for a run error, and the non-terminal path, table-driven over a joined error (`a failed\nb failed\n`), a leading flag, an error that already ends in a period, and a usage error with no hint. The non-terminal test writes through a `*colorprofile.Writer` over an `os.Pipe` write end, the shape `fang.Execute` really passes.
 
 ### flags.go — Common Flags
 
