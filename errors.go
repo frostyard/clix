@@ -49,6 +49,11 @@ func errorHandler(w io.Writer, styles fang.Styles, err error) {
 	// its width.
 	lines[len(lines)-1] = withClosingPeriod(lines[len(lines)-1])
 	for i, line := range lines {
+		if line == "" && len(lines) > 1 {
+			// A blank line between paragraphs stays blank: no margin or
+			// width padding.
+			continue
+		}
 		lines[i] = styledErrorLine(styles, line, i == 0)
 	}
 
@@ -85,20 +90,16 @@ func styledErrorWriter(w io.Writer) bool {
 	return !ok || term.IsTerminal(f.Fd())
 }
 
-// errorLines splits text into its non-empty lines, so that an error ending in
-// a newline does not print an empty line. An empty text yields one empty
-// line, which withClosingPeriod turns into fang's bare period.
+// errorLines splits text into its lines. A CRLF line end counts as a newline,
+// so no carriage return stays in a line. Newlines at the start and the end are
+// dropped, so an error ending in a newline does not print an empty line, but
+// an empty line inside the text stays: it separates two paragraphs of the
+// error. An empty text yields one empty line, which withClosingPeriod turns
+// into fang's bare period.
 func errorLines(text string) []string {
-	var lines []string
-	for line := range strings.SplitSeq(text, "\n") {
-		if line != "" {
-			lines = append(lines, line)
-		}
-	}
-	if len(lines) == 0 {
-		lines = []string{""}
-	}
-	return lines
+	text = strings.ReplaceAll(text, "\r\n", "\n")
+	text = strings.Trim(text, "\n")
+	return strings.Split(text, "\n")
 }
 
 // styledErrorLine renders one line of the error with fang's error text style.

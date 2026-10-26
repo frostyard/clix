@@ -148,6 +148,9 @@ func TestErrorHandlerClosingPeriod(t *testing.T) {
 		{name: "colon", err: errors.New("failed:"), want: "Failed:"},
 		{name: "trailing newline", err: errors.New("failed\n"), want: "Failed."},
 		{name: "empty", err: errors.New(""), want: "."},
+		{name: "trailing CRLF", err: errors.New("failed\r\n"), want: "Failed."},
+		{name: "CRLF with period", err: errors.New("failed.\r\n"), want: "Failed."},
+		{name: "leading newline", err: errors.New("\nfailed"), want: "Failed."},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -163,6 +166,43 @@ func TestErrorHandlerClosingPeriod(t *testing.T) {
 				t.Errorf("error line = %q, want %q", got, tt.want)
 			}
 		})
+	}
+}
+
+// TestErrorHandlerCRLFAndParagraphs pins two edges of the line split: a CRLF
+// line end leaves no carriage return in the output, and an empty line inside
+// the error stays as a blank line between the two paragraphs.
+func TestErrorHandlerCRLFAndParagraphs(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	errorHandler(&buf, fangStyles(t), errors.New("a failed\r\nb failed\r\n"))
+	if out := buf.String(); strings.Contains(out, "\r") {
+		t.Errorf("output = %q, want no carriage return", out)
+	}
+	lines := errorLinesOf(t, buf.String())
+	if len(lines) != 3 || !strings.HasSuffix(lines[1], "A failed") || !strings.HasSuffix(lines[2], "b failed.") {
+		t.Errorf("rendered lines = %q, want the header, \"A failed\" and \"b failed.\"", lines)
+	}
+
+	buf.Reset()
+	errorHandler(&buf, fangStyles(t), errors.New("first failure\n\nsecond failure"))
+	// Keep blank lines here: they are what this test checks.
+	var visible []string
+	for line := range strings.SplitSeq(ansiEscape.ReplaceAllString(buf.String(), ""), "\n") {
+		visible = append(visible, strings.TrimRight(line, " \t"))
+	}
+	first, second := -1, -1
+	for i, line := range visible {
+		switch {
+		case strings.HasSuffix(line, "First failure"):
+			first = i
+		case strings.HasSuffix(line, "second failure."):
+			second = i
+		}
+	}
+	if first < 0 || second != first+2 || visible[first+1] != "" {
+		t.Errorf("visible lines = %q, want the 2 paragraphs with 1 blank line between them", visible)
 	}
 }
 
