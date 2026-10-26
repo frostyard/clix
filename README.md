@@ -78,6 +78,24 @@ it, so the caller owns the process exit code — `os.Exit(1)` here is what makes
 `mytool` exit non-zero (call `clix.OutputJSONError` inside a command's `RunE`
 to emit the JSON error envelope under `--json`).
 
+`clix` renders that error with its own fang error handler:
+
+- on a terminal, every line of a multi-line error (for example an
+  `errors.Join` of two failures) keeps its own line, because the width style
+  is applied to each line;
+- a first word that is a flag keeps its lower case: `--clear cannot be
+  combined with --other`, not `--Clear cannot be combined with --other`;
+- the closing period is added only when the text does not already end in
+  `.`, `!`, `?` or `:`, so `failed.` is not printed as `failed..`;
+- a usage error keeps fang's `Try --help for usage.` hint.
+
+Output that does not go to a terminal (a pipe, a journal, a redirected
+stderr) is the plain `err.Error()` and one newline: no `ERROR` header, no
+style, no closing period and no usage hint, which is the non-terminal path fang
+documents but cannot reach, because it wraps stderr in a writer that hides the
+file. This differs from clix v0.4.0 and `main`, which printed fang's styled
+block there, with only the ANSI sequences stripped.
+
 Build with ldflags for version injection:
 
 ```bash

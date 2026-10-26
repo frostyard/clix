@@ -88,9 +88,17 @@ gate triad — and CI additionally runs the docs gate, the security scan
 
 ## Architecture
 
-Single flat package `clix` with four source files:
+Single flat package `clix` with five source files:
 
 - **clix.go** — `App` struct with `Run()` and `VersionString()`. Wires up fang.Execute with version string and signal handling; `Run()` returns an error (never panics) if the root command or any subcommand (any depth) already defines one of clix's reserved flags (`--json`, `--verbose`/`-v`, `--dry-run`/`-n`, `--silent`/`-s`).
+- **errors.go** — `errorHandler`, the fang error handler `RunContext` installs
+  with `fang.WithErrorHandler`: on a terminal it keeps one line per line of a
+  multi-line error (the width wrap applies per line), leaves a leading flag
+  uncapitalized, and adds a closing period only when the text needs one; a
+  writer that is not a terminal (a pipe, a journal) gets the plain
+  `err.Error()` and one newline, with no header, style or hint, the
+  non-terminal path fang documents but cannot reach through its
+  `*colorprofile.Writer`
 - **flags.go** — Package-level flag variables (`JSONOutput`, `Verbose`, `DryRun`, `Silent`), registration on cobra commands, and optional `BindViper()`.
 - **output.go** — `OutputJSON()` and `OutputJSONError()` helpers for standardized JSON output to stdout, plus the `Stdout`/`Stderr` writer seams (nil = current `os.Stdout`/`os.Stderr`) that every output path resolves through.
 - **reporter.go** — `NewReporter()` factory that returns NoopReporter (`--silent`), TextReporter, or JSONReporter (`--json`) based on flags. Silent takes priority over JSON.

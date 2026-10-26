@@ -190,12 +190,17 @@ func TestErrorEnvelopeAndExitCode(t *testing.T) {
 		t.Errorf("stderr = %q, want fang's rendered error mentioning the cause", stderr)
 	}
 
-	stdout, _, code = run(t, "fail")
+	stdout, stderr, code = run(t, "fail")
 	if code != 1 {
 		t.Fatalf("fail exit code = %d, want 1", code)
 	}
 	if stdout != "" {
 		t.Errorf("fail stdout = %q, want empty without --json", stdout)
+	}
+	// stderr is a pipe, not a terminal: clix's error handler prints the plain
+	// error and one newline, with no styled header (issue #107).
+	if stderr != "fail command failed: boom\n" {
+		t.Errorf("fail stderr = %q, want the plain error %q on a pipe", stderr, "fail command failed: boom\n")
 	}
 }
 

@@ -72,6 +72,13 @@ func (a *App) Run(cmd *cobra.Command) error {
 // command, an orchestrator) cancel the run instead of relying solely on the
 // OS signal handling fang.Execute installs for SIGINT/SIGTERM.
 //
+// RunContext renders a command error with clix's own fang error handler
+// (errors.go): on a terminal each line of a multi-line error, such as an
+// errors.Join error, keeps its own line and a leading flag keeps its lower
+// case; a writer that is not a terminal (a pipe, a journal, a redirected
+// stderr) gets the plain err.Error() and one newline, with no header, style,
+// closing period or usage hint.
+//
 // The flags --json, --verbose/-v, --dry-run/-n, and --silent/-s are reserved
 // by clix across the entire command tree: the check covers the root command
 // and every descendant at any depth, on both persistent and local flag sets.
@@ -91,5 +98,6 @@ func (a *App) RunContext(ctx context.Context, cmd *cobra.Command) error {
 		cmd,
 		fang.WithVersion(a.VersionString()),
 		fang.WithNotifySignal(os.Interrupt, syscall.SIGTERM),
+		fang.WithErrorHandler(errorHandler),
 	)
 }
