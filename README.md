@@ -1,203 +1,87 @@
-# Clix
+<!-- readme-kind: library -->
+# clix
 
-CLI convenience module for Frostyard tools.
+[![CI](https://github.com/frostyard/clix/actions/workflows/ci.yml/badge.svg)](https://github.com/frostyard/clix/actions/workflows/ci.yml)
+[![Go Reference](https://pkg.go.dev/badge/github.com/frostyard/clix.svg)](https://pkg.go.dev/github.com/frostyard/clix)
 
-Wraps [charm.land/fang/v2](https://pkg.go.dev/charm.land/fang/v2) and [spf13/cobra](https://github.com/spf13/cobra) to provide standardized version strings, common flags, JSON output helpers, and a reporter factory. Consuming CLIs only need to define their own commands.
+clix is a Go module of CLI scaffolding for frostyard command-line tools: it
+wraps [charm.land/fang/v2](https://pkg.go.dev/charm.land/fang/v2) and
+[spf13/cobra](https://github.com/spf13/cobra), so a tool defines only its own
+commands and business logic and gets standardized version strings, 4 common
+flags, JSON output helpers and a reporter factory.
+
+**Status:** pre-release. Releases are `v0` tags, and the API can change between minor releases.
+
+**Documentation:** [pkg.go.dev/github.com/frostyard/clix](https://pkg.go.dev/github.com/frostyard/clix)
+
+## What it does
+
+| Piece | What it gives you |
+| --- | --- |
+| [`App`, `Run`, `RunContext`](docs/specs/consumer-api.md#entry-points) | Build-time version, commit, date and builder metadata, and the entry point that registers the flags and executes the command tree. |
+| [The 4 common flags](docs/specs/consumer-api.md#common-flags) | `--json`, `--verbose`/`-v`, `--dry-run`/`-n` and `--silent`/`-s`, reserved across the whole command tree, with a package-level variable each. |
+| [`OutputJSON`, `OutputJSONError`](docs/specs/consumer-api.md#json-output) | The result document on stdout under `--json`, and the `error`, `message`, `details` envelope for a failure. |
+| [`NewReporter`](docs/specs/consumer-api.md#reporter-priority) | Progress output as text (stderr), JSON (stdout) or nothing, by flag priority. |
+| [`BindViper`](docs/specs/consumer-api.md#viper-integration) | The 4 flags bound to viper keys, with command line > viper > default precedence. |
+| [Error rendering](docs/specs/consumer-api.md#error-rendering) | A multi-line error on its own lines, a flag kept in lower case, and plain text off a terminal. |
+| [`Stdout`, `Stderr`](docs/specs/consumer-api.md#writer-seams) | Writer seams so a test captures output in a `bytes.Buffer` instead of swapping `os.Stdout`. |
 
 ## Install
 
-```bash
+```sh
 go get github.com/frostyard/clix
 ```
 
-## Usage
+## Use
 
 ```go
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/frostyard/clix"
 	"github.com/spf13/cobra"
 )
 
-// Set via ldflags at build time.
-var (
-	version = "dev"
-	commit  = "none"
-	date    = "unknown"
-	builtBy = "local"
-)
+var version = "dev" // set with -ldflags "-X main.version=1.2.3"
 
 func main() {
-	app := clix.App{
-		Version: version,
-		Commit:  commit,
-		Date:    date,
-		BuiltBy: builtBy,
-	}
-
-	rootCmd := &cobra.Command{
-		Use:   "mytool",
-		Short: "An example CLI built with clix",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			// Use the reporter for progress output
-			r := clix.NewReporter()
-			r.Message("doing work...")
-
-			result := map[string]string{"status": "ok"}
-
-			// OutputJSON writes to stdout when --json is set. An error means
-			// the JSON could not be encoded (a complete fallback envelope may
-			// have been written) or a complete document did not reach stdout;
-			// either way, report it rather than falling through to text.
-			written, err := clix.OutputJSON(result)
-			if err != nil {
-				return err
-			}
-			if written {
-				return nil
-			}
-
-			// Fall through to text output
-			fmt.Println("done")
-			return nil
-		},
-	}
-
+	rootCmd := &cobra.Command{Use: "mytool", RunE: func(cmd *cobra.Command, args []string) error {
+		clix.NewReporter().Message("doing work")
+		_, err := clix.OutputJSON(map[string]string{"status": "ok"})
+		return err
+	}}
+	app := clix.App{Version: version}
 	if err := app.Run(rootCmd); err != nil {
 		os.Exit(1)
 	}
 }
 ```
 
-When a command fails, fang renders the error to stderr and `App.Run` returns
-it, so the caller owns the process exit code — `os.Exit(1)` here is what makes
-`mytool` exit non-zero (call `clix.OutputJSONError` inside a command's `RunE`
-to emit the JSON error envelope under `--json`).
+`App.Run` returns the command error, so the caller owns the process exit
+code. Build with the version injected (`App` also takes `Commit`, `Date`
+and `BuiltBy`):
 
-`clix` renders that error with its own fang error handler:
-
-- on a terminal, every line of a multi-line error (for example an
-  `errors.Join` of two failures) keeps its own line, because the width style
-  is applied to each line;
-- a first word that is a flag keeps its lower case: `--clear cannot be
-  combined with --other`, not `--Clear cannot be combined with --other`;
-- the closing period is added only when the text does not already end in
-  `.`, `!`, `?` or `:`, so `failed.` is not printed as `failed..`;
-- a usage error keeps fang's `Try --help for usage.` hint.
-
-Output that does not go to a terminal (a pipe, a journal, a redirected
-stderr) is the plain `err.Error()` and one newline: no `ERROR` header, no
-style, no closing period and no usage hint, which is the non-terminal path fang
-documents but cannot reach, because it wraps stderr in a writer that hides the
-file. This differs from clix v0.4.0 and `main`, which printed fang's styled
-block there, with only the ANSI sequences stripped.
-
-Build with ldflags for version injection:
-
-```bash
-go build -ldflags "-X main.version=1.0.0 -X main.commit=$(git rev-parse HEAD) -X main.date=$(date -I) -X main.builtBy=ci"
+```sh
+go build -ldflags "-X main.version=1.2.3"
 ```
 
-## Flags
+The flags, the reserved-flag rule, reporter priority, error rendering and the
+Viper binding are in [spec: consumer API](docs/specs/consumer-api.md).
 
-`App.Run()` automatically registers these persistent flags on the root command:
+## Develop
 
-| Flag | Short | Description |
-|---|---|---|
-| `--json` | | Output in JSON format |
-| `--verbose` | `-v` | Verbose output |
-| `--dry-run` | `-n` | Dry run mode (no actual changes) |
-| `--silent` | `-s` | Suppress all progress output |
-
-Flag values are available as package-level variables: `clix.JSONOutput`, `clix.Verbose`, `clix.DryRun`, `clix.Silent`.
-
-These four flags — `--json`, `--verbose`/`-v`, `--dry-run`/`-n`, and `--silent`/`-s` — are reserved by clix across the whole command tree: if your root command *or any subcommand at any depth* already defines one of those names or shorthands (persistent or local), `App.Run()` returns an error naming the command and the collision instead of panicking, before anything executes. (cobra merges each command's local flags with its ancestors' persistent flags at parse time, so a subcommand shorthand collision would otherwise panic only when that subcommand runs, and a name collision would silently shadow clix's flag.)
-
-Calling `App.Run()` or `App.RunContext()` more than once against the same root command is safe: the flags clix registered on an earlier call are recognized and reused rather than re-registered, so a test or a REPL-style caller can execute the same root repeatedly without tripping its own reserved-flag collision check. A consumer-defined flag that collides with a reserved name or shorthand is still rejected exactly as on the first call. Each repeated invocation starts isolated: a reused flag is reset to its declared default and its `Changed` state cleared before that invocation's arguments are parsed, so a `--json` passed on one run cannot leak into a later run that omits it, and `BindViper`'s command-line-over-viper precedence sees only the current invocation's explicit flags.
-
-## RunContext
-
-`App.Run(cmd)` is a thin wrapper around `App.RunContext(context.Background(), cmd)`. Call `RunContext` directly when you want to bound execution with a deadline/timeout or let a supervising process (a test, a parent command, an orchestrator) cancel the run instead of relying solely on the `SIGINT`/`SIGTERM` handling `Run` installs:
-
-```go
-ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-defer cancel()
-
-if err := app.RunContext(ctx, rootCmd); err != nil {
-	os.Exit(1)
-}
+```sh
+mise install   # golangci-lint
+make ci        # the canonical gate (what CI's Unit Tests job runs)
 ```
 
-`RunContext` performs the same nil-command check, defaulting, and flag registration as `Run`, then runs `fang.Execute` with the supplied `ctx`; a command's `RunE` observes cancellation via `cmd.Context().Err()`.
+Design and invariants: [docs/design/overview.md](docs/design/overview.md).
 
-## Reporter
+## Where to go next
 
-`clix.NewReporter()` returns a reporter based on the active flags:
-
-| Priority | Condition | Reporter | Output |
-|---|---|---|---|
-| 1 (highest) | `--silent` | NoopReporter | none |
-| 2 | `--json` | JSONReporter | stdout |
-| 3 (default) | neither | TextReporter | stderr |
-
-Silent always takes priority over JSON. Text output goes to stderr to keep stdout clean for data.
-
-## Testing output
-
-Every clix output path — `OutputJSON`, `OutputJSONError`, and the reporters
-from `NewReporter` — writes through two package-level writer seams,
-`clix.Stdout` and `clix.Stderr`. Both default to `nil`, meaning "the current
-`os.Stdout` / `os.Stderr` at call time", so production behavior is unchanged
-and consumers that already swap `os.Stdout` in tests keep working. `Stdout` /
-`Stderr` are shared package-level variables, so tests that set them should not
-run in parallel unless they coordinate access. In tests, assign a
-`bytes.Buffer` instead of touching the process globals:
-
-```go
-func TestStatusJSON(t *testing.T) {
-	var out bytes.Buffer
-	clix.Stdout = &out
-	defer func() { clix.Stdout = nil }()
-	clix.JSONOutput = true
-	defer func() { clix.JSONOutput = false }()
-
-	// ... run the command ...
-
-	var got map[string]any
-	if err := json.Unmarshal(out.Bytes(), &got); err != nil {
-		t.Fatal(err)
-	}
-}
-```
-
-## Viper Integration
-
-If your CLI uses [spf13/viper](https://github.com/spf13/viper) for config, bind the common flags in `PersistentPreRunE`:
-
-```go
-rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
-	return clix.BindViper(cmd)
-}
-```
-
-This binds `--json`, `--verbose`, `--dry-run`, and `--silent` to viper keys so they can be set via config files or environment variables. cobra runs the root's `PersistentPreRunE` with `cmd` set to the command actually executing, and `BindViper` resolves the flags through that command's local, persistent, and inherited sets, so this one hook works for the root and every subcommand. Calling it before `App.Run` has registered the flags returns `clix: BindViper: --json is not registered on "<cmd>"; call App.Run on the root command first`. A nil `cmd` returns `clix: BindViper: command is nil` rather than panicking.
-
-`BindViper` also writes a viper-sourced value back onto the flag, so a config file or environment variable actually changes `clix.JSONOutput`, `clix.Verbose`, `clix.DryRun`, and `clix.Silent` — binding alone would leave the value inside viper, where nothing clix reads would see it.
-
-Precedence is **command line > viper > default**. A flag the user passed is never overwritten, so an explicit `--json=false` wins over `json: true` in a config file. Call `BindViper` from `PersistentPreRunE` (not `RunE`) so the write-back happens before your `RunE` reads those variables.
-
-## Development
-
-```bash
-make test            # run all tests
-make lint            # run golangci-lint
-make check           # format + lint + test + coverage-checker self-test + 95% floor
-                     # + zero-covered-function guard (pre-commit gate)
-make bump            # tag next semver with svu and push; the tag push publishes the GitHub release
-```
-
-The e2e suite in [`tests/e2e/`](tests/e2e/README.md) builds a consumer program wired like the example above and runs it as a subprocess. Contributing guide: [AGENTS.md](AGENTS.md) (`CONTRIBUTING.md` resolves to it).
+- [AGENTS.md](AGENTS.md): the rules for agents and contributors.
+- [docs/README.md](docs/README.md): the decisions, designs, specs and plans.
+- [SECURITY.md](SECURITY.md): report a vulnerability privately.
+- [LICENSE](LICENSE): MIT.

@@ -65,7 +65,11 @@ make test            # run all tests (unit tests + tests/e2e/); writes coverage.
 make test-race       # run all tests under the race detector (mirrors the CI Race Detection job)
 make lint            # run golangci-lint (.golangci.yml; fails if not installed,
                      # warns if not the golangci-lint pin in mise.toml)
-make check           # fmt + lint + test + coverage floor (pre-commit gate)
+make check           # fmt + lint + test + coverage floor (developer gate: may format)
+make verify          # tidy diff, gofmt -l, vet, lint at the mise.toml pin, tests
+                     # (credential-free, non-mutating: what a read-only reviewer runs)
+make ci              # the canonical gate: `verify` first, then the race detector, the
+                     # coverage-instrumented tests and the 95.0% floor (what CI runs)
 make coverage-check  # enforce the 95.0% statement-coverage floor and reject any 0.0%-covered
                      # function on coverage.out (scripts/check-coverage.sh)
 make test-coverage-check   # self-test scripts/check-coverage.sh with fixture profiles
@@ -80,11 +84,15 @@ go test -v ./tests/e2e/...      # end-to-end suite alone
 node scripts/check-docs.mjs     # docs-integrity gate (index, links, aliases, CI job inventory)
 ```
 
-Run `make check` before opening a pull request; `make verify` is the
-credential-free, non-mutating gate a read-only reviewer runs and `make ci` is
-what CI runs — `make verify` / `make check` / `make ci` is core ADR-0043's
-gate triad — and CI additionally runs the docs gate, the security scan
-(`govulncheck ./...`), and release config validation.
+`make verify` / `make check` / `make ci` is core ADR-0044's gate triad:
+`make verify` is the credential-free, non-mutating gate a read-only reviewer
+runs, `make check` the developer gate that may format, and `make ci` the
+canonical gate (it runs `verify` as its prerequisite, then the race detector,
+the coverage-instrumented tests and the 95.0% floor) that CI's `Unit Tests`
+job runs (core ADR-0022, ADR-0073 form 1). Run `make check` before opening a
+pull request and `make ci` before you call it ready. CI additionally runs the
+docs gate, the security scan (`govulncheck ./...`), and release config
+validation, which have no `make` counterpart.
 
 ## Architecture
 
@@ -103,11 +111,22 @@ Single flat package `clix` with five source files:
 - **output.go** — `OutputJSON()` and `OutputJSONError()` helpers for standardized JSON output to stdout, plus the `Stdout`/`Stderr` writer seams (nil = current `os.Stdout`/`os.Stderr`) that every output path resolves through.
 - **reporter.go** — `NewReporter()` factory that returns NoopReporter (`--silent`), TextReporter, or JSONReporter (`--json`) based on flags. Silent takes priority over JSON.
 
-Plus the end-to-end suite: **tests/e2e/** — `e2e_test.go` builds
-`tests/e2e/exampletool` (a consumer program wired the way `README.md`
-prescribes) and runs it as a subprocess, asserting `--version`, the
-stdout/stderr split, Silent > JSON > Text, the JSON error envelope, and exit
-codes ([tests/e2e/README.md](tests/e2e/README.md)).
+Plus two test packages:
+
+- **tests/baseline/** — `baseline_test.go` holds the repository to rows B1 to
+  B17 of frostyard/core's repository baseline (core ADR-0071): the
+  instruction-alias set, the corrections inbox, the docs shape, `ci: verify`,
+  SHA-pinned actions with `persist-credentials: false` and a top-level
+  `permissions` key, the risk-path list, the PR template's risk tier,
+  `.svu.yml`, the MIT license, `make ci` as the CI entry, the Dependabot
+  ecosystems, `SECURITY.md`, no CODEOWNERS file, no agent-framework trees, and
+  the README standard. It reads the git index, so it checks tracked files.
+- **tests/e2e/** — `e2e_test.go` builds `tests/e2e/exampletool` (a consumer
+  program wired the way `README.md`'s `Use` program and
+  [docs/specs/consumer-api.md](docs/specs/consumer-api.md) prescribe) and runs
+  it as a subprocess, asserting `--version`, the stdout/stderr split,
+  Silent > JSON > Text, the JSON error envelope, and exit codes
+  ([tests/e2e/README.md](tests/e2e/README.md)).
 
 ## Conventions
 
@@ -177,6 +196,30 @@ their canonical targets, never the aliases. `docs/review-rubric.md`,
 [docs/specs/pr-acceptance-metric.md](docs/specs/pr-acceptance-metric.md), and
 [docs/design/quality-loop.md](docs/design/quality-loop.md).
 
+**README standard** The root [README.md](README.md) is kind `library` under
+frostyard/core's [spec: README](https://github.com/frostyard/core/blob/main/docs/specs/readme.md)
+(core ADR-0072): the marker line `<!-- readme-kind: library -->`, a title, the
+CI and Go Reference badges, a lead, the status line, the documentation line,
+then `What it does`, `Install`, `Use`, `Develop` and `Where to go next` only —
+no other `##` heading, no `###` heading, at most 1000 words, no emoji. The
+flag, reporter, error-rendering and Viper rules live in
+[docs/specs/consumer-api.md](docs/specs/consumer-api.md), not in the README;
+`readme_example_test.go` compiles the README's program and resolves every
+`clix.<Ident>` in the README and in that spec against the exported API.
+`node .agents/skills/frostyard-readme/scripts/check-readme.mjs .` (from a core
+checkout) runs rules R1 to R12.
+
+**security policy** [SECURITY.md](SECURITY.md) is the repository settings
+contract's public face (core ADR-0040): it names the latest release tag as the
+only supported version, the GitHub private vulnerability reporting route, and
+the sensitive areas of the library. Update its tag when a release lands.
+
+**risk paths** [`.github/risk-paths.json`](.github/risk-paths.json) lists the
+globs whose change makes a pull request high risk (core ADR-0068), and
+`.github/workflows/risk-paths.yml` calls core's reusable workflow, which adds
+the label `risk:high` to such a pull request. The list is a protected boundary:
+change it only alongside the matching design or ADR change.
+
 **session handoffs** Use `.claude/session-summary.md` for concise context
 needed to continue unfinished work in a later session. Fold durable
 architecture decisions and non-obvious lessons into the right `docs/` page,
@@ -222,7 +265,10 @@ cleanliness, `go vet`, `gofmt`), docs integrity
 (`scripts/check-docs.mjs`), and release config (`goreleaser check` over
 `.goreleaser.yaml`, so a broken release configuration fails before merge
 rather than on a tag push; `make release-check` runs the same check locally
-and skips when goreleaser is not installed). The whole loop — declare, review, gate, learn,
+and skips when goreleaser is not installed). A separate workflow,
+`.github/workflows/risk-paths.yml`, runs on `pull_request_target` and is not a
+required check: it adds the label `risk:high` to a pull request that touches a
+glob in [`.github/risk-paths.json`](.github/risk-paths.json) (core ADR-0068). The whole loop — declare, review, gate, learn,
 observe — is described in [docs/design/quality-loop.md](docs/design/quality-loop.md).
 
 ## Repository boundary
