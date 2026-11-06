@@ -206,8 +206,10 @@ flag, reporter, error-rendering and Viper rules live in
 [docs/specs/consumer-api.md](docs/specs/consumer-api.md), not in the README;
 `readme_example_test.go` compiles the README's program and resolves every
 `clix.<Ident>` in the README and in that spec against the exported API.
-`node .agents/skills/frostyard-readme/scripts/check-readme.mjs .` (from a core
-checkout) runs rules R1 to R12.
+Core's checker runs rules R1 to R12: from a core checkout at `origin/main`,
+`node .agents/skills/frostyard-readme/scripts/check-readme.mjs <clix-checkout>`
+(add `--ref <commit>` to check a commit). `tests/baseline/` checks only the
+kind marker and the pkg.go.dev link.
 
 **security policy** [SECURITY.md](SECURITY.md) is the repository settings
 contract's public face (core ADR-0040): it names the latest release tag as the
