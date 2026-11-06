@@ -14,12 +14,15 @@ import (
 	"testing"
 )
 
-// The README's Go examples are part of the contract clix ships: renaming or
-// removing an exported symbol they use must fail the Unit Tests job, not wait
-// for a reader to paste a broken snippet. Every fenced ```go block is
-// extracted; the complete `package main` block is compiled against this
-// checkout with `go build`, and every `clix.<Ident>` selector in any block is
-// resolved against the package's exported names read from source.
+// The Go examples in README.md and docs/specs/consumer-api.md are part of the
+// contract clix ships: renaming or removing an exported symbol they use must
+// fail the Unit Tests job, not wait for a reader to paste a broken snippet.
+// Every fenced ```go block of both files is extracted; the README's first
+// block is the complete `package main` a consumer starts from, and it is
+// compiled against this checkout with `go build`. Every `clix.<Ident>`
+// selector in any block of either file is resolved against the package's
+// exported names read from source. The spec must keep at least 2 Go blocks
+// (the RunContext and Viper fragments), and the README keeps the program.
 
 var goFence = regexp.MustCompile("(?s)```go\n(.*?)\n```")
 var clixSelector = regexp.MustCompile(`\bclix\.([A-Za-z_][A-Za-z0-9_]*)`)
@@ -146,14 +149,25 @@ func buildProgram(source, repoRoot string) error {
 	return nil
 }
 
+// codeDocs lists the files whose ```go blocks are part of the shipped
+// contract, with the fewest blocks each must keep: the README holds the
+// complete program, the consumer API spec the RunContext and Viper fragments.
+var codeDocs = []struct {
+	path string
+	min  int
+}{
+	{"README.md", 1},
+	{"docs/specs/consumer-api.md", 2},
+}
+
 func TestREADMEGoExamples(t *testing.T) {
 	readme, err := os.ReadFile("README.md")
 	if err != nil {
 		t.Fatalf("read README.md: %v", err)
 	}
 	blocks := goBlocks(string(readme))
-	if len(blocks) < 3 {
-		t.Fatalf("README.md has %d ```go fenced blocks, want at least 3 (usage program, flags fragment, viper fragment)", len(blocks))
+	if len(blocks) == 0 {
+		t.Fatalf("README.md has no ```go fenced block, want the complete package main program a consumer starts from")
 	}
 
 	// The exit-code contract from PR #40 lives in the first (usage) block.
@@ -167,13 +181,23 @@ func TestREADMEGoExamples(t *testing.T) {
 		}
 	}
 
-	// Every clix.<Ident> in every block is exported by the package today.
+	// Every clix.<Ident> in every block of every code doc is exported today,
+	// and each code doc keeps the blocks the contract names.
 	exported, err := exportedNames(".")
 	if err != nil {
 		t.Fatalf("read exported names: %v", err)
 	}
-	if unknown := unknownIdentifiers(string(readme), exported); len(unknown) != 0 {
-		t.Errorf("README.md Go blocks use identifiers clix does not export: %v", unknown)
+	for _, doc := range codeDocs {
+		markdown, err := os.ReadFile(doc.path)
+		if err != nil {
+			t.Fatalf("read %s: %v", doc.path, err)
+		}
+		if got := len(goBlocks(string(markdown))); got < doc.min {
+			t.Errorf("%s has %d ```go fenced blocks, want at least %d", doc.path, got, doc.min)
+		}
+		if unknown := unknownIdentifiers(string(markdown), exported); len(unknown) != 0 {
+			t.Errorf("%s Go blocks use identifiers clix does not export: %v", doc.path, unknown)
+		}
 	}
 
 	// The complete program compiles against this checkout.

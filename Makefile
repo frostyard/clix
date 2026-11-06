@@ -103,10 +103,20 @@ verify:
 ## check: Run fmt, lint, test, and the coverage floor
 check: fmt lint test test-coverage-check coverage-check
 
-## ci: Credential-free gate for CI (core ADR-0022/ADR-0043): verify, the race detector, then this repository's coverage floor
-ci:
-	@echo "==> ci: verify"
-	@$(MAKE) --no-print-directory verify
+# `ci` is this repository's canonical local gate (core ADR-0022, ADR-0044), not
+# a reproduction of the GitHub Actions workflow. It runs `make verify` first
+# (tidy diff, gofmt, vet, lint at the pin, tests) as a prerequisite, then its
+# own steps sequentially, and stops at the first failure. The CI `Unit Tests`
+# job runs `make ci` (core ADR-0073 form 1), so the gate a developer runs and
+# the one GitHub runs are the same command. Three workflow jobs have no
+# counterpart here — Security Scan (govulncheck), Docs integrity
+# (`node scripts/check-docs.mjs`) and Release config (goreleaser) — and the
+# workflow's jobs declare no `needs:`, so there is no CI ordering for this
+# target to mirror. Keep this comment, the `## ci` help line, AGENTS.md's
+# Commands block, and docs/org-adrs.md's ADR-0022, ADR-0044 and ADR-0073
+# entries saying the same thing.
+## ci: Canonical local gate, sequential and fail-fast — `make verify` first as a prerequisite (tidy diff, gofmt, vet, lint at the pin, tests), then the race detector, the coverage-instrumented tests, the coverage-floor script self-test and the 95.0% floor; the CI Unit Tests job runs this target (core ADR-0022, ADR-0044, ADR-0073 form 1)
+ci: verify
 	@echo "==> ci: race detector"
 	@$(MAKE) --no-print-directory test-race
 	@echo "==> ci: tests with coverage"

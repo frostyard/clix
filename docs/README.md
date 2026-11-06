@@ -32,6 +32,10 @@ Org-wide decisions binding this repo are listed in [org-adrs.md](org-adrs.md).
 
 ### Specs
 
+- [Consumer API](specs/consumer-api.md) — the contract a CLI writes against:
+  the entry points, the 4 common flags and their reserved-flag rule, the JSON
+  output helpers, reporter priority, error rendering, the `Stdout`/`Stderr`
+  seams and the Viper binding
 - [PR acceptance metric](specs/pr-acceptance-metric.md) — the monthly
   acceptance-rate definition and rules (`docs/metrics.md` resolves here)
 - [PR review rubric](specs/pr-review-rubric.md) — the rows every review

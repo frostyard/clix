@@ -8,6 +8,20 @@ Reviews apply docs/specs/pr-review-rubric.md. -->
 <!-- What changes and why, in a few sentences. Link the issue(s) this
 closes. -->
 
+## Risk tier
+
+<!-- Select the highest applicable tier — the tiers of
+`policies/agent-governance.json` (`risk_classification.tiers`, highest
+applicable). A PR with the label `risk:high` — it touches a path in
+`.github/risk-paths.json` — is Tier 4. -->
+
+- [ ] Tier 1: Low
+- [ ] Tier 2: Moderate
+- [ ] Tier 3: High
+- [ ] Tier 4: Critical
+
+**Rationale:**
+
 ## Checks
 
 <!-- The build gate from AGENTS.md — run before opening the PR. -->
@@ -17,6 +31,7 @@ closes. -->
       (`.golangci.yml`) at the `mise.toml` pin, the coverage-instrumented
       `go test` over `./...` (unit tests plus `tests/e2e/`), the
       `check-coverage.sh` self-test, and the 95.0% statement-coverage floor
+- [ ] `make ci` — the canonical gate, which CI's Unit Tests job runs
 - [ ] `go mod tidy` leaves `go.mod`/`go.sum` unchanged; `go vet ./...` clean
       (the CI `verify` job)
 - [ ] New or changed behavior has focused tests, including failure paths;

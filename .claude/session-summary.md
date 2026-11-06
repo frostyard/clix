@@ -9,22 +9,23 @@ commits instead of copying logs.
 
 ## Current state
 
-- ACMM conformance and Fluent enrollment surface landed (2026-08-18):
-  [ADR-0001](../docs/adr/0001-acmm-conformance-via-canonical-aliases.md)'s
-  alias lattice (`AGENTS.md` canonical; `docs/specs/pr-review-rubric.md`,
-  `docs/specs/pr-acceptance-metric.md`, `docs/design/quality-loop.md`
-  canonical with `docs/review-rubric.md`, `docs/metrics.md`,
-  `docs/quality.md` aliases), the docs-integrity gate
-  (`scripts/check-docs.mjs`, `docs-gate` CI job), the e2e suite in
-  `tests/e2e/`, `.claude/settings.json` tool-layer limits,
-  `policies/agent-governance.json`, and the GoReleaser release flow
-  (`make bump` → tag push → `.github/workflows/release.yml`).
+- clix meets frostyard/core's repository baseline (core ADR-0071, rows B1
+  to B17), held by the guard test in `tests/baseline/`: golangci-lint 2.15.0
+  in `mise.toml`, `ci: verify` in the Makefile, least-privilege workflow
+  permissions with `persist-credentials: false`, `.github/risk-paths.json`
+  and the `risk-paths.yml` caller, the PR template's risk tier,
+  `SECURITY.md`, and the library README (core ADR-0072) with
+  [docs/specs/consumer-api.md](../docs/specs/consumer-api.md) holding the
+  consumer rules. Releasing stays a maintainer act: `make bump` → tag push →
+  `.github/workflows/release.yml`.
 
 ## Last landed
 
-- #30 Go 1.26.6; #29 core skills sync; #28 SHA-pinned actions.
+- #109 mise-action 5.2.4; #108 multi-line and off-terminal error rendering
+  (in `v0.5.0`).
 
 ## Next
 
-- Cut the first GoReleaser-published tag with `make bump` once this PR
-  merges and confirm the `goreleaser` workflow publishes the release notes.
+- Baseline row B11: move `go.mod` to the fleet Go toolchain (Go 1.27) in its
+  own pull request.
+- After each release, update the supported tag in `SECURITY.md`.
