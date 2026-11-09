@@ -1,23 +1,30 @@
-# Risk paths (frostyard/core ADR-0068, docs/specs/risk-paths.md): runs core's
-# reusable risk-paths workflow on every pull request. A pull request that
-# touches a glob in .github/risk-paths.json gets the label risk:high.
+# PR triage (frostyard/core ADR-0068, ADR-0077, ADR-0078, docs/specs/pr-triage.md):
+# runs core's reusable PR triage workflow on every pull request. It reads
+# .github/risk-paths.json and works out 1 level from the changed files, then
+# adds the label level:L1, level:L2, level:L3 or level:L4, and adds risk:high at
+# L1 and L2. It also removes ready-for-human when the head moves after the label
+# or when CI at the head is not green when the label comes, and it writes a
+# "would auto-merge" shadow comment on some Dependabot pull requests. It never
+# merges.
 #
 # pull_request_target runs this file and the list from the base branch, so a
 # pull request cannot remove its own label by an edit of either one. The
 # reusable workflow checks out nothing and runs no pull-request code. Pinned
 # to a full core commit SHA (ADR-0021). No merge_group trigger, and not a
-# required check. The repository must have the label risk:high.
-name: Risk paths
+# required check. The repository must have the label risk:high, or the job
+# fails; without the 4 level labels it writes a warning and adds no level
+# label.
+name: PR triage
 
 on:
   pull_request_target:
-    types: [opened, synchronize, reopened, edited]
+    types: [opened, synchronize, reopened, edited, labeled]
 
 permissions: {}
 
 jobs:
-  risk-paths:
+  pr-triage:
     permissions:
       contents: read
       pull-requests: write
-    uses: frostyard/core/.github/workflows/risk-paths.yml@1b02a129026329cef2b46d1fbd0465a863c1cd81 # core#194
+    uses: frostyard/core/.github/workflows/pr-triage.yml@c996ea3fb54bcf1a3c621113522213702a7673e2 # frostyard/core main, 2026-11-09 (core#225)

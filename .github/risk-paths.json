@@ -1,14 +1,15 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
+  "default_level": "L3",
   "paths": [
-    { "glob": ".github/risk-paths.json", "why": "workflow-and-permissions: governance, the high-risk path list that adds the risk:high label" },
-    { "glob": ".github/workflows/risk-paths.yml", "why": "workflow-and-permissions: governance, the caller of core's risk-paths workflow" },
-    { "glob": ".github/workflows/release.yml", "why": "release-and-publication: publication, the tag-triggered GoReleaser release with GORELEASER_KEY and contents: write" },
-    { "glob": ".github/workflows/**", "why": "workflow-and-permissions: secrets and credentials, CI jobs, GITHUB_TOKEN permissions and repository secrets" },
-    { "glob": "policies/**", "why": "workflow-and-permissions: governance, the agent-governance policy file" },
-    { "glob": ".claude/settings.json", "why": "workflow-and-permissions: governance, the tool-layer deny of merge, approve, release and push to main" },
-    { "glob": "{.goreleaser.yaml,.svu.yml}", "why": "release-and-publication: publication, the release configuration and the version rule" },
-    { "glob": "{Makefile,mise.toml,mise.lock}", "why": "release-and-publication: publication, make bump tags and pushes a release; mise.toml and mise.lock pin the golangci-lint the gate runs" },
-    { "glob": "{scripts/**,.coverage-thresholds.json}", "why": "workflow-and-permissions: governance, the coverage floor and docs gate that CI runs (never_relax)" }
+    { "glob": ".github/risk-paths.json", "level": "L2", "why": "workflow-and-permissions: governance, the high-risk path list that adds the risk:high label" },
+    { "glob": ".github/workflows/risk-paths.yml", "level": "L2", "why": "workflow-and-permissions: governance, the caller of core's risk-paths workflow" },
+    { "glob": ".github/workflows/release.yml", "level": "L1", "why": "release-and-publication: publication, the tag-triggered GoReleaser release with GORELEASER_KEY and contents: write" },
+    { "glob": ".github/workflows/**", "level": "L1", "why": "workflow-and-permissions: secrets and credentials, CI jobs, GITHUB_TOKEN permissions and repository secrets" },
+    { "glob": "policies/**", "level": "L2", "why": "workflow-and-permissions: governance, the agent-governance policy file" },
+    { "glob": ".claude/settings.json", "level": "L2", "why": "workflow-and-permissions: governance, the tool-layer deny of merge, approve, release and push to main" },
+    { "glob": "{.goreleaser.yaml,.svu.yml}", "level": "L1", "why": "release-and-publication: publication, the release configuration and the version rule" },
+    { "glob": "{Makefile,mise.toml,mise.lock}", "level": "L1", "why": "release-and-publication: publication, make bump tags and pushes a release; mise.toml and mise.lock pin the golangci-lint the gate runs" },
+    { "glob": "{scripts/**,.coverage-thresholds.json}", "level": "L2", "why": "workflow-and-permissions: governance, the coverage floor and docs gate that CI runs (never_relax)" }
   ]
 }
