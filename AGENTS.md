@@ -217,9 +217,12 @@ only supported version, the GitHub private vulnerability reporting route, and
 the sensitive areas of the library. Update its tag when a release lands.
 
 **risk paths** [`.github/risk-paths.json`](.github/risk-paths.json) lists the
-globs whose change makes a pull request high risk (core ADR-0068), and
-`.github/workflows/risk-paths.yml` calls core's reusable workflow, which adds
-the label `risk:high` to such a pull request. The list is a protected boundary:
+globs whose change makes a pull request high risk (core ADR-0068, ADR-0078),
+and `.github/workflows/risk-paths.yml` calls core's reusable PR triage
+workflow, which adds 1 level label (`level:L1` to `level:L4`) and, at L1 or
+L2, the label `risk:high` to such a pull request. It also removes
+`ready-for-human` when the head moves after the label (core ADR-0077). The
+list is a protected boundary:
 change it only alongside the matching design or ADR change.
 
 **session handoffs** Use `.claude/session-summary.md` for concise context
@@ -269,8 +272,10 @@ cleanliness, `go vet`, `gofmt`), docs integrity
 rather than on a tag push; `make release-check` runs the same check locally
 and skips when goreleaser is not installed). A separate workflow,
 `.github/workflows/risk-paths.yml`, runs on `pull_request_target` and is not a
-required check: it adds the label `risk:high` to a pull request that touches a
-glob in [`.github/risk-paths.json`](.github/risk-paths.json) (core ADR-0068). The whole loop — declare, review, gate, learn,
+required check: it adds the level label `level:L1` to `level:L4` and, at L1 or
+L2, the label `risk:high` to a pull request that touches a
+glob in [`.github/risk-paths.json`](.github/risk-paths.json) (core ADR-0068,
+ADR-0077, ADR-0078). The whole loop — declare, review, gate, learn,
 observe — is described in [docs/design/quality-loop.md](docs/design/quality-loop.md).
 
 ## Repository boundary
