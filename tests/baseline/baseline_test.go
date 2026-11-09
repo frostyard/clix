@@ -14,6 +14,7 @@ package baseline_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -588,21 +589,26 @@ func matchRiskSegments(globSegments, pathSegments []string) bool {
 
 // matchRiskSegment matches 1 path segment against 1 glob segment with the
 // rules of core's segmentPattern: "?" is exactly 1 character, "*" is 0 or more
-// characters, and every other character is literal. A character class or a
-// backslash is literal, as core reads it, not syntax.
+// characters, and every other character is literal. "*" and "?" are recognized
+// before literal equality, so "*a" matches "*ba" and "*" matches "**", as in
+// core. A character class or a backslash is literal, as core reads it, not
+// syntax.
 func matchRiskSegment(glob, segment string) bool {
 	pattern, value := []rune(glob), []rune(segment)
 	i, j := 0, 0
 	star, mark := -1, 0
 	for j < len(value) {
 		switch {
-		case i < len(pattern) && (pattern[i] == '?' || pattern[i] == value[j]):
-			i++
-			j++
 		case i < len(pattern) && pattern[i] == '*':
 			star = i
 			mark = j
 			i++
+		case i < len(pattern) && pattern[i] == '?':
+			i++
+			j++
+		case i < len(pattern) && pattern[i] == value[j]:
+			i++
+			j++
 		case star >= 0:
 			i = star + 1
 			mark++
@@ -617,234 +623,76 @@ func matchRiskSegment(glob, segment string) bool {
 	return i == len(pattern)
 }
 
-// prTriageJob is the job id the caller must use: the reusable workflow is
-// called from this job, never from another one.
+// prTriageJob is the job id of the caller: the reusable workflow is called
+// from this job, never from another one.
 const prTriageJob = "pr-triage"
 
-// opensBlockScalar holds when a trimmed line starts a block scalar: the text
-// after its last colon begins with "|" or ">" (with or without a chomping
-// indicator, as in "run: |" or "env: >-").
-func opensBlockScalar(trimmed string) bool {
-	field := trimmed
-	if i := strings.LastIndex(field, ":"); i >= 0 {
-		field = strings.TrimSpace(field[i+1:])
-	}
-	return strings.HasPrefix(field, "|") || strings.HasPrefix(field, ">")
+// riskCallerUses is the 1 body line of the caller that may vary: the core pin,
+// with 40 lowercase hex characters and an optional trailing " # comment".
+const riskCallerUses = "    uses: " + riskReusable + "<SHA>[ # comment]"
+
+// riskCallerBody is the caller after its leading comment block: every line must
+// equal this body exactly (core ADR-0068, ADR-0077, ADR-0078; the risk-paths
+// and PR triage specs). An exact text check cannot be fooled by a comment that
+// holds a key, by a quoted scalar or by a second types: list.
+var riskCallerBody = []string{
+	"name: PR triage",
+	"",
+	"on:",
+	"  pull_request_target:",
+	"    types: [opened, synchronize, reopened, edited, labeled]",
+	"",
+	"permissions: {}",
+	"",
+	"jobs:",
+	"  " + prTriageJob + ":",
+	"    permissions:",
+	"      contents: read",
+	"      pull-requests: write",
+	riskCallerUses,
 }
 
-// jobUses gives the value of the uses: key at indent 4 in the job with id job,
-// which is a key at indent 2 under the top-level jobs: map (core ADR-0021, the
-// risk-paths and PR triage specs). The jobs: map ends at the next indent-0
-// key, so a job header or a uses: line inside another top-level block never
-// counts. The value drops a trailing comment (quote-aware) and the quotes of a
-// quoted scalar. A blank line or a comment-only line at any indent does not
-// end the job block; only a non-comment line at indent 2 or less does. A line
-// inside a block scalar (after a key that ends with "|" or ">") is text, not
-// structure.
-func jobUses(text, job string) (string, bool) {
-	inJobs := false
-	inJob := false
-	blockIndent := -1
-	for _, line := range strings.Split(text, "\n") {
-		trimmed := strings.TrimSpace(line)
-		indent := len(line) - len(strings.TrimLeft(line, " "))
-		if blockIndent >= 0 {
-			if trimmed == "" || indent > blockIndent {
-				continue
-			}
-			blockIndent = -1
-		}
-		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
-			continue
-		}
-		if opensBlockScalar(trimmed) {
-			blockIndent = indent
-		}
-		if indent == 0 {
-			inJobs = strings.HasPrefix(trimmed, "jobs:")
-			inJob = false
-			continue
-		}
-		if !inJobs {
-			continue
-		}
-		if indent <= 2 {
-			inJob = indent == 2 && strings.HasPrefix(trimmed, job+":")
-			continue
-		}
-		if !inJob || blockIndent == indent {
-			continue
-		}
-		if indent == 4 && strings.HasPrefix(trimmed, "uses:") {
-			return unquoteScalar(stripComment(strings.TrimPrefix(trimmed, "uses:"))), true
-		}
-	}
-	return "", false
-}
-
-// pinnedRiskUses holds when value is core's PR triage workflow at a full
-// 40-character commit SHA.
-func pinnedRiskUses(value string) bool {
-	if !strings.HasPrefix(value, riskReusable) {
-		return false
-	}
-	ref := strings.TrimPrefix(value, riskReusable)
-	return len(ref) == 40 && strings.Trim(ref, "0123456789abcdef") == ""
-}
-
-// stripComment drops a trailing YAML comment: a "#" starts a comment only at
-// the start of the value or after a space or a tab, and a "#" inside a single-
-// or double-quoted scalar is part of the value. Backslash escapes in a
-// double-quoted scalar are not read; no caller value here needs them.
-func stripComment(value string) string {
-	quote := byte(0)
-	for i := 0; i < len(value); i++ {
-		c := value[i]
-		switch {
-		case quote != 0:
-			if c == quote {
-				quote = 0
-			}
-		case c == '"' || c == '\'':
-			quote = c
-		case c == '#' && (i == 0 || value[i-1] == ' ' || value[i-1] == '\t'):
-			return strings.TrimSpace(value[:i])
-		}
-	}
-	return strings.TrimSpace(value)
-}
-
-// unquoteScalar drops the quotes of 1 scalar that is wholly quoted.
-func unquoteScalar(value string) string {
-	if len(value) >= 2 && (value[0] == '"' || value[0] == '\'') && value[len(value)-1] == value[0] {
-		return value[1 : len(value)-1]
-	}
-	return value
-}
-
-// parseFlowList reads an inline YAML list such as "[opened, synchronize]". The
-// list ends at the first "]", so a "[" and "]" later in the line are a
-// comment; a "#" starts a comment only at the start of the value or after a
-// space or a tab, and a "#" inside a quoted item is part of that item.
-func parseFlowList(value string) []string {
-	open := strings.IndexByte(value, '[')
-	if open < 0 {
-		return nil
-	}
-	close := strings.IndexByte(value[open:], ']')
-	if close < 0 {
-		return nil
-	}
-	inside := value[open+1 : open+close]
-	var items []string
-	var current strings.Builder
-	quote := byte(0)
-	for i := 0; i < len(inside); i++ {
-		c := inside[i]
-		switch {
-		case quote != 0:
-			current.WriteByte(c)
-			if c == quote {
-				quote = 0
-			}
-		case c == '"' || c == '\'':
-			quote = c
-			current.WriteByte(c)
-		case c == ',':
-			items = append(items, current.String())
-			current.Reset()
-		default:
-			current.WriteByte(c)
-		}
-	}
-	items = append(items, current.String())
-	values := make([]string, 0, len(items))
-	for _, item := range items {
-		if item = unquoteScalar(stripComment(item)); item != "" {
-			values = append(values, item)
-		}
-	}
-	return values
-}
-
-// pullRequestTargetTypes gives the types: list of the on: pull_request_target:
-// trigger, and holds when that trigger declares 1. It reads only that trigger:
-// a types: list under another trigger, such as pull_request:, is not the
-// caller's pull_request_target types.
-func pullRequestTargetTypes(text string) ([]string, bool) {
-	inOn := false
-	inTarget := false
-	blockIndent := -1
-	for _, line := range strings.Split(text, "\n") {
-		trimmed := strings.TrimSpace(line)
-		indent := len(line) - len(strings.TrimLeft(line, " "))
-		if blockIndent >= 0 {
-			if trimmed == "" || indent > blockIndent {
-				continue
-			}
-			blockIndent = -1
-		}
-		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
-			continue
-		}
-		if opensBlockScalar(trimmed) {
-			blockIndent = indent
-		}
-		if indent == 0 {
-			inOn = strings.HasPrefix(trimmed, "on:")
-			inTarget = false
-			continue
-		}
-		if !inOn {
-			continue
-		}
-		if indent == 2 {
-			inTarget = strings.HasPrefix(trimmed, "pull_request_target:")
-			continue
-		}
-		if !inTarget || blockIndent == indent {
-			continue
-		}
-		if indent == 4 && strings.HasPrefix(trimmed, "types:") {
-			return parseFlowList(strings.TrimPrefix(trimmed, "types:")), true
-		}
-	}
-	return nil, false
-}
-
-// checkRiskPathsCaller reports every problem in a PR triage caller text: its
-// pr-triage job calls core's pr-triage workflow at a full 40-character commit
-// SHA, it never calls the older risk-paths workflow, it runs on
-// pull_request_target with the 5 event types, it has the pr-triage job with
-// its 2 permissions, and its top-level permissions is empty.
+// checkRiskPathsCaller compares the caller with its canonical body and reports
+// the first difference.
 func checkRiskPathsCaller(text string) []string {
-	var findings []string
-	uses, ok := jobUses(text, prTriageJob)
-	switch {
-	case !ok:
-		findings = append(findings, "the caller has no "+prTriageJob+" job with a uses: key at indent 4")
-	case strings.HasPrefix(uses, "frostyard/core/.github/workflows/risk-paths.yml@"):
-		findings = append(findings, "the caller still calls core's risk-paths workflow; call pr-triage.yml instead")
-	case !pinnedRiskUses(uses):
-		findings = append(findings, "the "+prTriageJob+" job does not call "+riskReusable+"<40 hex>, pinned to a 40-character commit SHA")
+	lines := strings.Split(strings.TrimSuffix(text, "\n"), "\n")
+	start := 0
+	for start < len(lines) && (strings.TrimSpace(lines[start]) == "" || strings.HasPrefix(strings.TrimSpace(lines[start]), "#")) {
+		start++
 	}
-	wantTypes := []string{"opened", "synchronize", "reopened", "edited", "labeled"}
-	types, ok := pullRequestTargetTypes(text)
-	switch {
-	case !ok:
-		findings = append(findings, "the caller does not declare an on: pull_request_target: trigger with a types: list")
-	case !slices.Equal(types, wantTypes):
-		findings = append(findings, "the caller does not declare on.pull_request_target types "+strings.Join(wantTypes, ", ")+"; it has "+strings.Join(types, ", "))
-	}
-	for _, want := range []string{"permissions: {}", "contents: read", "pull-requests: write"} {
-		if !strings.Contains(text, want) {
-			findings = append(findings, "the caller has no "+strconv.Quote(want))
+	body := lines[start:]
+	for i, want := range riskCallerBody {
+		if i >= len(body) {
+			return []string{fmt.Sprintf("%s ends at line %d, want line %d: %q", riskCaller, len(body), i+1, want)}
+		}
+		if want == riskCallerUses {
+			if problem := checkRiskCallerUses(body[i], i+1); problem != "" {
+				return []string{problem}
+			}
+			continue
+		}
+		if body[i] != want {
+			return []string{fmt.Sprintf("%s line %d is %q, want %q", riskCaller, i+1, body[i], want)}
 		}
 	}
-	if strings.Contains(text, "\n  merge_group:") {
-		findings = append(findings, "the caller has a merge_group trigger; it is not a required check")
+	if len(body) > len(riskCallerBody) {
+		return []string{fmt.Sprintf("%s has an extra line %d: %q", riskCaller, len(riskCallerBody)+1, body[len(riskCallerBody)])}
 	}
-	return findings
+	return nil
+}
+
+// checkRiskCallerUses holds when line calls core's PR triage workflow at a full
+// 40-character lowercase commit SHA, with an optional " # comment" after it.
+func checkRiskCallerUses(line string, number int) string {
+	rest, ok := strings.CutPrefix(line, "    uses: "+riskReusable)
+	if !ok {
+		return fmt.Sprintf("%s line %d is %q, want %q", riskCaller, number, line, riskCallerUses)
+	}
+	sha, _, _ := strings.Cut(rest, " #")
+	if len(sha) != 40 || strings.Trim(sha, "0123456789abcdef") != "" {
+		return fmt.Sprintf("%s line %d holds the SHA %q, want 40 lowercase hex characters", riskCaller, number, sha)
+	}
+	return ""
 }
 
 func TestBaselineB6RiskPaths(t *testing.T) {
@@ -950,6 +798,18 @@ func TestMatchRiskGlob(t *testing.T) {
 		{"non-ASCII alternative", "{café,thé}/x.go", "thé/x.go", true},
 		{"star does not cross a directory", "*.go", "a/b.go", false},
 		{"2 stars in 1 segment do not cross a directory", "a**b", "a/x/b", false},
+		{"star before literal equality", "*a", "*ba", true},
+		{"star matches a star", "*", "**", true},
+		{"2 stars in 1 segment match 2 stars", "a*b", "a**b", true},
+		{"question mark matches a star", "?", "*", true},
+		{"question mark matches itself", "?", "?", true},
+		{"question mark matches a star in the middle", "a?c", "a*c", true},
+		{"star file pattern matches a star file", "*.go", "*.go", true},
+		{"star then question mark", "*?", "**", true},
+		{"trailing star does not match a leading star", "*b", "b*", false},
+		{"literal question marks match", "a?c", "a?c", true},
+		{"star segment matches a star segment", "a/*/c", "a/*/c", true},
+		{"double star then star", "**/*a", "x/*ba", true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -961,72 +821,60 @@ func TestMatchRiskGlob(t *testing.T) {
 }
 
 func TestCheckRiskPathsCaller(t *testing.T) {
-	caller := func(uses string) string {
-		return "name: PR triage\non:\n  pull_request_target:\n    types: [opened, synchronize, reopened, edited, labeled]\n\n" +
-			"permissions: {}\n\njobs:\n  pr-triage:\n    permissions:\n      contents: read\n" +
-			"      pull-requests: write\n    uses: " + uses + "\n"
+	data, err := os.ReadFile(filepath.Join("..", "..", riskCaller))
+	if err != nil {
+		t.Fatalf("read %s: %v", riskCaller, err)
 	}
-	pin := riskReusable + hex40 + " # frostyard/core main, 2026-11-09 (core#225)"
-	valid := caller(pin)
-	header := "name: PR triage\non:\n  pull_request_target:\n    types: [opened, synchronize, reopened, edited, labeled]\n\n" +
-		"permissions: {}\n\njobs:\n"
-	// The pin in another job beside pr-triage: a text scan that looks anywhere
-	// in the file accepts this, and the run calls nothing.
-	otherJob := header + "  pr-triage:\n    permissions:\n      contents: read\n      pull-requests: write\n" +
-		"  other:\n    permissions:\n      contents: read\n    uses: " + pin + "\n"
-	// The pin inside a run: | block of pr-triage: it is text, not a uses: key.
-	blockScalar := header + "  pr-triage:\n    permissions:\n      contents: read\n      pull-requests: write\n" +
-		"    steps:\n      - run: |\n          uses: " + pin + "\n"
-	// Comments at indent 0 and 2 and a blank line between the job key and its
-	// uses: are not structure and do not end the job block.
-	commented := header + "  pr-triage:\n# a comment at indent 0\n\n  # a comment at indent 2\n" +
-		"    permissions:\n      contents: read\n      pull-requests: write\n    uses: " + pin + "\n"
-	// The job header and the pin inside a top-level block scalar: the jobs:
-	// map ends at the next indent-0 key, so nothing inside the scalar is a job.
-	scalarJobs := strings.Replace(valid, "\n  pr-triage:\n", "\n  other:\n", 1) +
-		"\nrun-name: |\n  pr-triage:\n    uses: " + pin + "\n"
-	// The labeled type under the wrong trigger: pull_request: is not
-	// pull_request_target:.
-	wrongTrigger := strings.Replace(valid, "    types: [opened, synchronize, reopened, edited, labeled]\n",
-		"    types: [opened, synchronize, reopened, edited]\n  pull_request:\n    types: [labeled]\n", 1)
-	// A "#" inside a quoted item is part of the item, not a comment: the 5th
-	// type is "labeled # x", not labeled.
-	quotedHash := strings.Replace(valid, "edited, labeled]", `edited, "labeled # x"]`, 1)
-	// Inline comments in 5 places, including a "[" and "]" in the types
-	// comment: the list ends at the first "]" and every comment is dropped.
-	inlineComments := "name: PR triage\non: # events\n  pull_request_target: # base branch\n" +
-		"    types: [opened, synchronize, reopened, edited, labeled] # readiness [L1]\n\n" +
-		"permissions: {}\n\njobs:\n  pr-triage: # core\n    permissions:\n      contents: read\n" +
-		"      pull-requests: write\n    uses: " + pin + " # pinned\n"
+	text := string(data)
+	usesPrefix := "    uses: " + riskReusable
+	usesLine := ""
+	for _, line := range strings.Split(text, "\n") {
+		if strings.HasPrefix(line, usesPrefix) {
+			usesLine = line
+			break
+		}
+	}
+	if usesLine == "" {
+		t.Fatalf("%s has no uses: line for the core pin", riskCaller)
+	}
+	sha, _, _ := strings.Cut(strings.TrimPrefix(usesLine, usesPrefix), " #")
+	if len(sha) != 40 {
+		t.Fatalf("%s pins %q, want a 40-character SHA", riskCaller, sha)
+	}
+	types := "    types: [opened, synchronize, reopened, edited, labeled]"
 	tests := []struct {
-		name, text, want string
+		name string
+		text string
+		want string
 	}{
-		{"pinned pr-triage caller", valid, ""},
-		{"pin under another job", otherJob, "the caller has no pr-triage job with a uses: key"},
-		{"pin inside a block scalar", blockScalar, "the caller has no pr-triage job with a uses: key"},
-		{"job and pin inside a top-level block scalar", scalarJobs, "the caller has no pr-triage job with a uses: key"},
-		{"labeled only under pull_request", wrongTrigger, "does not declare on.pull_request_target types"},
-		{"labeled inside a quoted item", quotedHash, "does not declare on.pull_request_target types"},
-		{"inline comments in 5 places", inlineComments, ""},
-		{"comments and a blank line before uses", commented, ""},
-		{"caller that pins risk-paths.yml", caller("frostyard/core/.github/workflows/risk-paths.yml@" + hex40 + " # core#194"),
-			"the caller still calls core's risk-paths workflow"},
-		{"unpinned reusable workflow", caller(riskReusable + "1b02a12 # core#225"),
-			"pinned to a 40-character commit SHA"},
-		{"no labeled type", strings.Replace(valid, ", labeled]", "]", 1), "the caller does not declare"},
-		{"risk-paths job id", strings.Replace(valid, "\n  pr-triage:\n", "\n  risk-paths:\n", 1), "the caller has no pr-triage job"},
-		{"no pull-requests scope", strings.Replace(valid, "      pull-requests: write\n", "", 1),
-			`the caller has no "pull-requests: write"`},
-		{"no empty top-level permissions", strings.Replace(valid, "permissions: {}", "permissions:\n  contents: read", 1),
-			`the caller has no "permissions: {}"`},
-		{"merge_group trigger", valid + "on:\n  merge_group:\n", "merge_group trigger"},
+		{"the committed caller", text, ""},
+		{"another SHA and another trailing comment",
+			strings.Replace(text, usesLine, usesPrefix+strings.Repeat("a", 40)+" # pinned", 1), ""},
+		{"pin under another job name",
+			strings.Replace(text, "jobs:\n  "+prTriageJob+":", "jobs:\n  other:", 1), `want "  ` + prTriageJob + `:"`},
+		{"caller that pins risk-paths.yml",
+			strings.Replace(text, riskReusable, "frostyard/core/.github/workflows/risk-paths.yml@", 1), riskReusable + "<SHA>"},
+		{"short SHA", strings.Replace(text, usesPrefix+sha, usesPrefix+sha[:7], 1), "40 lowercase hex"},
+		{"no labeled type", strings.Replace(text, types, "    types: [opened, synchronize, reopened, edited]", 1), types},
+		{"commented-out pull-requests scope",
+			strings.Replace(text, "      pull-requests: write", "      # pull-requests: write", 1), "pull-requests: write"},
+		{"an extra permission",
+			strings.Replace(text, "      pull-requests: write\n", "      pull-requests: write\n      actions: read\n", 1), "actions: read"},
+		{"a scalar job header with a comment",
+			strings.Replace(text, "  "+prTriageJob+":", "  "+prTriageJob+": | # note: text", 1), prTriageJob + ": | # note: text"},
+		{"the types list inside a comment",
+			strings.Replace(text, types, "    types: # [opened, synchronize, reopened, edited, labeled]", 1), "types: #"},
+		{"an added merge_group trigger",
+			strings.Replace(text, "  "+prTriageJob+":", "  merge_group:\n  "+prTriageJob+":", 1), "merge_group"},
+		{"an extra line inside the job",
+			strings.Replace(text, "      contents: read\n", "      contents: read\n    timeout-minutes: 5\n", 1), "timeout-minutes"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := strings.Join(checkRiskPathsCaller(tt.text), "; ")
 			if tt.want == "" {
 				if got != "" {
-					t.Errorf("checkRiskPathsCaller(%s) = %q, want no finding", tt.name, got)
+					t.Fatalf("checkRiskPathsCaller(%s) = %q, want no finding", tt.name, got)
 				}
 				return
 			}

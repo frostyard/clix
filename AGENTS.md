@@ -220,7 +220,10 @@ the sensitive areas of the library. Update its tag when a release lands.
 globs whose change makes a pull request high risk (core ADR-0068, ADR-0078),
 and `.github/workflows/risk-paths.yml` calls core's reusable PR triage
 workflow, which adds 1 level label (`level:L1` to `level:L4`) and, at L1 or
-L2, the label `risk:high` to such a pull request. It also removes
+L2, the label `risk:high` to such a pull request. The organization floors
+can raise the computed level, and an existing stricter level label stays (the
+workflow never lowers 1). A missing `risk:high` label fails the job; the 4
+level labels only give a warning when absent. It also removes
 `ready-for-human` when the head moves after the label (core ADR-0077). The
 list is a protected boundary:
 change it only alongside the matching design or ADR change.
