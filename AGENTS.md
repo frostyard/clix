@@ -231,8 +231,8 @@ change it only alongside the matching design or ADR change.
 **session handoffs** Use `.claude/session-summary.md` for concise context
 needed to continue unfinished work in a later session. Fold durable
 architecture decisions and non-obvious lessons into the right `docs/` page,
-or drop them in the `.memory/` inbox (the single learnings inbox, append-only
-`corrections.jsonl`, drained into `docs/`).
+or drop them in the `.memory/` inbox (the single learnings inbox, 1 record
+file each under `.memory/corrections/`, drained into `docs/`).
 
 ## Pull requests
 
