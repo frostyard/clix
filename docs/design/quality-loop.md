@@ -91,8 +91,8 @@ PR template ──► review rubric ──► CI gates ──► corrections ─
      no coverage service, and `make test-cover` still produces a local
      `coverage.html` for inspection. The floor may tighten, never loosen.
 - **Learn** — corrections land in
-  [.memory/corrections.jsonl](../../.memory/README.md) (append-only,
-  five-field schema) and are promoted into `AGENTS.md`, docs, or skills;
+  [.memory/corrections/](../../.memory/README.md) (1 file for each record,
+  five-field schema, never removed or renamed) and are promoted into `AGENTS.md`, docs, or skills;
   promotion is the only sanctioned duplication. Session continuity lives in
   [.claude/session-summary.md](../../.claude/session-summary.md).
 - **Enforce mechanically** — [.claude/settings.json](../../.claude/settings.json)
