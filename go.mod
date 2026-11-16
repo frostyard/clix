@@ -1,12 +1,12 @@
 module github.com/frostyard/clix
 
-go 1.26.6
+go 1.26.7
 
 toolchain go1.26.11
 
 require (
 	charm.land/fang/v2 v2.0.1
-	charm.land/lipgloss/v2 v2.0.6
+	charm.land/lipgloss/v2 v2.1.0
 	github.com/charmbracelet/colorprofile v0.4.3
 	github.com/charmbracelet/x/term v0.2.2
 	github.com/frostyard/std v0.5.0
