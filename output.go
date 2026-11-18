@@ -64,38 +64,47 @@ func OutputJSON(data any) (bool, error) {
 	// Encode first so an encoding failure and a write failure are told apart:
 	// the bytes below are exactly what an indented Encoder would emit
 	// (two-space indent, trailing newline).
-	var document bytes.Buffer
-	enc := json.NewEncoder(&document)
-	enc.SetIndent("", "  ")
-	if err := enc.Encode(data); err != nil {
-		var fallback bytes.Buffer
-		fallbackEncoder := json.NewEncoder(&fallback)
-		fallbackEncoder.SetIndent("", "  ")
-		fallbackErr := fallbackEncoder.Encode(map[string]any{
+	document, err := encodeIndented(data)
+	if err != nil {
+		fallback, fallbackErr := encodeIndented(map[string]any{
 			"error":   true,
 			"message": fmt.Sprintf("failed to encode JSON: %v", err),
 		})
 		if fallbackErr != nil {
 			return false, errors.Join(err, fmt.Errorf("encode JSON fallback envelope: %w", fallbackErr))
 		}
-		n, fallbackErr := w.Write(fallback.Bytes())
-		if fallbackErr != nil {
-			return false, errors.Join(err, fmt.Errorf("write JSON fallback envelope: %w", fallbackErr))
-		}
-		if n != fallback.Len() {
-			fallbackErr = fmt.Errorf("write JSON fallback envelope: wrote %d of %d bytes: %w", n, fallback.Len(), io.ErrShortWrite)
+		if fallbackErr := writeAll(w, fallback, "write JSON fallback envelope"); fallbackErr != nil {
 			return false, errors.Join(err, fallbackErr)
 		}
 		return true, err
 	}
-	n, err := w.Write(document.Bytes())
-	if err != nil {
-		return false, fmt.Errorf("write JSON output: %w", err)
-	}
-	if n != document.Len() {
-		return false, fmt.Errorf("write JSON output: wrote %d of %d bytes: %w", n, document.Len(), io.ErrShortWrite)
+	if err := writeAll(w, document, "write JSON output"); err != nil {
+		return false, err
 	}
 	return true, nil
+}
+
+// encodeIndented encodes v with two-space indentation and a trailing newline.
+func encodeIndented(v any) ([]byte, error) {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(v); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+// writeAll writes b once and reports a write error or short write with context.
+func writeAll(w io.Writer, b []byte, what string) error {
+	n, err := w.Write(b)
+	if err != nil {
+		return fmt.Errorf("%s: %w", what, err)
+	}
+	if n != len(b) {
+		return fmt.Errorf("%s: wrote %d of %d bytes: %w", what, n, len(b), io.ErrShortWrite)
+	}
+	return nil
 }
 
 // OutputJSONError writes a structured error object as JSON to stdout and
