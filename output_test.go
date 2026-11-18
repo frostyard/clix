@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -412,5 +413,99 @@ func TestOutputJSON_SuccessBytesUnchanged(t *testing.T) {
 	}
 	if out.String() != want.String() {
 		t.Errorf("OutputJSON() bytes changed:\ngot:  %q\nwant: %q", out.String(), want.String())
+	}
+}
+
+func TestOutputJSON_FailureErrorTextExact(t *testing.T) {
+	data := map[string]int{"a": 1}
+	fallback := map[string]any{
+		"error":   true,
+		"message": "failed to encode JSON: json: unsupported type: chan int",
+	}
+	encodedLen := func(value any) int {
+		t.Helper()
+		var buf bytes.Buffer
+		enc := json.NewEncoder(&buf)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(value); err != nil {
+			t.Fatal(err)
+		}
+		return buf.Len()
+	}
+	n, m := encodedLen(data), encodedLen(fallback)
+	tests := []struct {
+		name    string
+		writer  io.Writer
+		data    any
+		wantErr string
+	}{
+		{
+			name:    "document write error",
+			writer:  &failingWriter{},
+			data:    data,
+			wantErr: "write JSON output: " + errBrokenPipe.Error(),
+		},
+		{
+			name:    "document short write",
+			writer:  shortWriter{},
+			data:    data,
+			wantErr: fmt.Sprintf("write JSON output: wrote %d of %d bytes: short write", n-1, n),
+		},
+		{
+			name:    "fallback write error",
+			writer:  &failingWriter{},
+			data:    make(chan int),
+			wantErr: "json: unsupported type: chan int\nwrite JSON fallback envelope: " + errBrokenPipe.Error(),
+		},
+		{
+			name:    "fallback short write",
+			writer:  shortWriter{},
+			data:    make(chan int),
+			wantErr: fmt.Sprintf("json: unsupported type: chan int\nwrite JSON fallback envelope: wrote %d of %d bytes: short write", m-1, m),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			Stdout = tt.writer
+			defer func() { Stdout = nil }()
+			JSONOutput = true
+			defer func() { JSONOutput = false }()
+
+			written, err := OutputJSON(tt.data)
+			if written {
+				t.Error("OutputJSON() = true, want false")
+			}
+			if err == nil || err.Error() != tt.wantErr {
+				t.Errorf("OutputJSON() error = %v, want %q", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestOutputJSON_FallbackEnvelopeBytesExact(t *testing.T) {
+	var out bytes.Buffer
+	Stdout = &out
+	defer func() { Stdout = nil }()
+	JSONOutput = true
+	defer func() { JSONOutput = false }()
+
+	written, err := OutputJSON(make(chan int))
+	if !written {
+		t.Error("OutputJSON() = false, want true")
+	}
+	if err == nil || err.Error() != "json: unsupported type: chan int" {
+		t.Errorf("OutputJSON() error = %v, want %q", err, "json: unsupported type: chan int")
+	}
+	var want bytes.Buffer
+	enc := json.NewEncoder(&want)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(map[string]any{
+		"error":   true,
+		"message": "failed to encode JSON: json: unsupported type: chan int",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(out.Bytes(), want.Bytes()) {
+		t.Errorf("OutputJSON() fallback bytes = %q, want %q", out.Bytes(), want.Bytes())
 	}
 }
