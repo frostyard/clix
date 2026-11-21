@@ -5,8 +5,7 @@
 // pure helpers with their own table tests, so a failure path is covered too.
 //
 // B9 (the tool documentation site) is exempt: clix is a library and
-// pkg.go.dev documents it. B11 (the Go toolchain aligned with the fleet) is a
-// follow-up.
+// pkg.go.dev documents it. B11 (the Go toolchain) is in toolchain_test.go.
 //
 // The tests read the index with `git ls-files -s -z` (modes and paths) and the
 // contents from disk. Without git, every test skips.

@@ -26,6 +26,4 @@ commits instead of copying logs.
 
 ## Next
 
-- Baseline row B11: move `go.mod` to the fleet Go toolchain (Go 1.27) in its
-  own pull request.
 - After each release, update the supported tag in `SECURITY.md`.
