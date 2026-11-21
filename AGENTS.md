@@ -40,8 +40,10 @@ improvising, whichever agent you are:
 
 ### Prerequisites
 
-- **Go 1.26.11** (`go.mod`'s `toolchain go1.26.11` line is the only Go pin;
-  CI, `mise`, and Snowcat workers all read it)
+- **Go 1.27.4** (`go.mod`'s `go 1.27.4` line is the only Go pin; CI's
+  `actions/setup-go`, `mise`, and Snowcat workers all read it, and `go.mod`
+  has no `toolchain` line — baseline row B11, core ADR-0043). It is also the
+  minimum Go for a module that imports clix.
 - `make`
 - [`mise`](https://mise.jdx.dev/) to provision every other pinned tool:
   `mise install` reads [`mise.toml`](mise.toml) and verifies each download
@@ -113,12 +115,16 @@ Single flat package `clix` with five source files:
 
 Plus two test packages:
 
-- **tests/baseline/** — `baseline_test.go` holds the repository to rows B1 to
-  B17 of frostyard/core's repository baseline (core ADR-0071): the
+- **tests/baseline/** — `baseline_test.go` and `toolchain_test.go` hold the
+  repository to rows B1 to B17 of frostyard/core's repository baseline (core
+  ADR-0071), B9 exempt: the
   instruction-alias set, the corrections inbox, the docs shape, `ci: verify`,
   SHA-pinned actions with `persist-credentials: false` and a top-level
   `permissions` key, the risk-path list, the PR template's risk tier,
-  `.svu.yml`, the MIT license, `make ci` as the CI entry, the Dependabot
+  `.svu.yml`, the Go toolchain (`go.mod`'s `go` line as the only Go pin,
+  `mise.lock` at the same release, golangci-lint only from `mise.toml`, and
+  `make lint-version-check` reading the `go` line), the MIT license, `make ci`
+  as the CI entry, the Dependabot
   ecosystems, `SECURITY.md`, no CODEOWNERS file, no agent-framework trees, and
   the README standard. It reads the git index, so it checks tracked files.
 - **tests/e2e/** — `e2e_test.go` builds `tests/e2e/exampletool` (a consumer
@@ -130,7 +136,7 @@ Plus two test packages:
 
 ## Conventions
 
-- Go 1.26; use modern Go syntax (range-over-int, omitzero, etc.)
+- Go 1.27; use modern Go syntax (range-over-int, omitzero, etc.)
 - One test file per source file, standard `testing` package only; the one
   cross-cutting exception is `concurrency_test.go`, which drives the output
   paths from several goroutines so the `race` CI job has a real workload

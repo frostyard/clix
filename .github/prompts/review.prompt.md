@@ -31,7 +31,7 @@ Apply the machine-readable controls in
      `t.Parallel` / `-race`). The `os.Pipe` tests in `output_test.go` stay
      only as the compatibility proof that the nil default still honors a
      swapped `os.Stdout`; they are not the pattern for new tests.
-   - **Go 1.26 idioms** — range-over-int, `omitzero`, `any`, `slices`/`maps`.
+   - **Go 1.27 idioms** — range-over-int, `omitzero`, `any`, `slices`/`maps`.
 2. Apply every row of the
    [PR review rubric](../../docs/specs/pr-review-rubric.md)
    (`docs/review-rubric.md` resolves to the same file). Check each row
